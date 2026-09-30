@@ -1,0 +1,163 @@
+---
+import Placeholder from "../Placeholder.astro";
+---
+
+<section class="vision" id="vision">
+  <div class="vision__grid container-wide">
+    <article class="vision__copy reveal">
+      <div class="vision__copy-media" aria-hidden="true">
+        <Placeholder label="Vision render" ratio="auto" class="vision__ph" />
+      </div>
+      <div class="vision__copy-body">
+        <p class="eyebrow">The Vision</p>
+        <h2 class="display">More than a destination.</h2>
+        <p class="display display--gold vision__sub">A city of purpose.</p>
+        <p class="lede">
+          Miracle Dome City is a visionary development envisioned to impact
+          nations — a place for worship, healing, prayer, transformation and
+          community.
+        </p>
+        <p class="vision__credit">A vision of Prophet Jerome Fernando</p>
+      </div>
+    </article>
+
+    <article class="vision__film reveal" id="vision-film">
+      <a
+        class="vision__panel"
+        href="https://miracle-dome.com/"
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Watch the vision"
+      >
+        <Placeholder label="Vision film" ratio="16 / 10" class="vision__film-ph" />
+        <span class="vision__play" aria-hidden="true">▶</span>
+      </a>
+      <div class="vision__meta">
+        <p class="eyebrow">Watch the Vision</p>
+        <p class="vision__meta-text">Discover the story and future of Miracle Dome City.</p>
+      </div>
+    </article>
+  </div>
+</section>
+
+<style>
+  .vision {
+    padding-block: var(--space-2xl);
+    background: var(--color-charcoal);
+  }
+
+  .vision__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(1.25rem, 3vw, 2rem);
+    align-items: stretch;
+    min-height: min(70vh, 620px);
+  }
+
+  .vision__copy {
+    position: relative;
+    overflow: hidden;
+    min-height: 520px;
+  }
+
+  .vision__copy-media { position: absolute; inset: 0; }
+
+  .vision__copy-media :global(.vision__ph) {
+    height: 100%;
+    min-height: 100%;
+    aspect-ratio: auto;
+  }
+
+  .vision__copy-media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgba(12, 14, 18, 0.35), rgba(12, 14, 18, 0.88)),
+      linear-gradient(90deg, rgba(12, 14, 18, 0.75), rgba(12, 14, 18, 0.35));
+  }
+
+  .vision__copy-body {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    height: 100%;
+    padding: clamp(1.5rem, 4vw, 2.75rem);
+  }
+
+  .vision__sub {
+    margin-top: 0.35rem;
+    font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+    max-width: 16ch;
+  }
+
+  .vision__credit {
+    margin-top: 1.75rem;
+    color: var(--color-gold);
+    font-size: 0.68rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  .vision__film {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    gap: 1rem;
+  }
+
+  .vision__panel {
+    position: relative;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    min-height: 420px;
+    border: 1px solid var(--color-line);
+    transition: border-color 0.35s var(--ease-out), transform 0.4s var(--ease-out);
+  }
+
+  .vision__panel :global(.vision__film-ph) {
+    position: absolute;
+    inset: 0;
+    min-height: 100%;
+    aspect-ratio: auto;
+  }
+
+  .vision__panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(12, 14, 18, 0.35);
+  }
+
+  .vision__panel:hover {
+    border-color: var(--color-gold);
+    transform: translateY(-2px);
+  }
+
+  .vision__play {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 4.5rem;
+    height: 4.5rem;
+    border: 1px solid var(--color-gold-bright);
+    border-radius: 50%;
+    background: rgba(12, 14, 18, 0.5);
+    color: var(--color-gold-bright);
+    font-size: 1rem;
+    padding-left: 0.2rem;
+  }
+
+  .vision__meta-text {
+    color: var(--color-muted);
+    font-size: 0.95rem;
+  }
+
+  @media (max-width: 900px) {
+    .vision__grid { grid-template-columns: 1fr; }
+    .vision__copy, .vision__panel { min-height: 360px; }
+  }
+</style>

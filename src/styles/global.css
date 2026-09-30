@@ -1,0 +1,245 @@
+:root {
+  --color-charcoal: #0c0e12;
+  --color-charcoal-soft: #14171d;
+  --color-charcoal-mid: #1a1e26;
+  --color-stone: #b8a78e;
+  --color-stone-soft: #d6c8b4;
+  --color-gold: #c9a45c;
+  --color-gold-bright: #e4c57a;
+  --color-gold-dim: #8f7340;
+  --color-white: #f4f1ec;
+  --color-muted: rgba(244, 241, 236, 0.72);
+  --color-line: rgba(201, 164, 92, 0.22);
+
+  --font-display: "Cormorant Garamond", "Times New Roman", serif;
+  --font-body: "Outfit", "Segoe UI", sans-serif;
+
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2.5rem;
+  --space-xl: 4.5rem;
+  --space-2xl: 6.5rem;
+  --space-3xl: 8.5rem;
+
+  --container: min(1100px, calc(100% - 3rem));
+  --container-wide: min(1280px, calc(100% - 2.5rem));
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --header-h: 4.75rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--color-charcoal);
+  color: var(--color-white);
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 1rem;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img,
+video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+.container {
+  width: var(--container);
+  margin-inline: auto;
+}
+
+.container-wide {
+  width: var(--container-wide);
+  margin-inline: auto;
+}
+
+.section {
+  padding-block: var(--space-2xl);
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 4.5vw, 3.5rem);
+  font-weight: 500;
+  line-height: 1.08;
+  max-width: 14ch;
+  color: var(--color-white);
+}
+
+.section-lede {
+  margin-top: 1.15rem;
+  max-width: 34rem;
+  color: var(--color-muted);
+  font-size: 1.02rem;
+  font-weight: 300;
+  line-height: 1.75;
+}
+
+.media-frame {
+  position: relative;
+  overflow: hidden;
+}
+
+.eyebrow {
+  display: inline-block;
+  margin: 0 0 0.85rem;
+  color: var(--color-gold);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 5.8vw, 4.75rem);
+  font-weight: 500;
+  color: var(--color-white);
+  max-width: 12ch;
+}
+
+.display--gold {
+  color: var(--color-gold-bright);
+}
+
+.lede {
+  margin-top: 1.25rem;
+  max-width: 34rem;
+  color: var(--color-muted);
+  font-size: 1.02rem;
+  font-weight: 300;
+  line-height: 1.75;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  min-height: 3rem;
+  padding: 0.85rem 1.7rem;
+  border: 1px solid var(--color-gold);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-gold-bright);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background 0.35s var(--ease-out),
+    color 0.35s var(--ease-out),
+    border-color 0.35s var(--ease-out),
+    transform 0.35s var(--ease-out);
+}
+
+.btn:hover,
+.btn:focus-visible {
+  background: var(--color-gold);
+  color: var(--color-charcoal);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.btn--solid {
+  background: var(--color-gold);
+  color: var(--color-charcoal);
+}
+
+.btn--solid:hover,
+.btn--solid:focus-visible {
+  background: var(--color-gold-bright);
+  border-color: var(--color-gold-bright);
+}
+
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.35rem;
+  color: var(--color-gold);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  transition: color 0.3s var(--ease-out), gap 0.3s var(--ease-out);
+}
+
+.text-link:hover {
+  color: var(--color-gold-bright);
+  gap: 0.75rem;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.9s var(--ease-out),
+    transform 0.9s var(--ease-out);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .btn,
+  .text-link {
+    transition: none;
+  }
+}

@@ -1,0 +1,58 @@
+---
+import Placeholder from "../Placeholder.astro";
+---
+
+<section class="visionary" id="visionary">
+  <div class="visionary__grid container-wide">
+    <div class="visionary__portrait reveal">
+      <Placeholder label="Prophet Jerome Fernando" ratio="4 / 5" class="visionary__ph" />
+    </div>
+    <div class="visionary__copy reveal">
+      <p class="eyebrow">The Visionary</p>
+      <h2 class="display">Prophet Jerome Fernando</h2>
+      <p class="lede">
+        The visionary behind Miracle Dome City — carrying a God-given mandate
+        for a city where heaven meets earth for the nations.
+      </p>
+      <a
+        class="text-link"
+        href="https://prophetjerome.com/about/"
+        target="_blank"
+        rel="noreferrer"
+      >
+        Read more <span aria-hidden="true">→</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .visionary {
+    padding-block: var(--space-2xl);
+    background: var(--color-charcoal-soft);
+  }
+
+  .visionary__grid {
+    display: grid;
+    grid-template-columns: 0.95fr 1.05fr;
+    gap: clamp(1.5rem, 4vw, 3.5rem);
+    align-items: center;
+  }
+
+  .visionary__portrait {
+    overflow: hidden;
+    min-height: clamp(420px, 58vw, 640px);
+  }
+
+  .visionary__portrait :global(.visionary__ph) {
+    height: 100%;
+    min-height: inherit;
+    aspect-ratio: auto;
+  }
+
+  .visionary__copy .display { max-width: 10ch; }
+
+  @media (max-width: 860px) {
+    .visionary__grid { grid-template-columns: 1fr; }
+  }
+</style>

@@ -1,0 +1,136 @@
+---
+import Placeholder from "../Placeholder.astro";
+
+const hotspots = [
+  { label: "1,500-Bed Facility", href: "#facility", x: "16%", y: "52%" },
+  { label: "Carmel Hill", href: "#carmel-hill", x: "46%", y: "30%" },
+  { label: "Zion Grounds", href: "#zion-grounds", x: "60%", y: "54%" },
+  { label: "Large Car Park", href: "#city-numbers", x: "82%", y: "62%" },
+];
+---
+
+<section class="explore" id="explore">
+  <div class="explore__intro container reveal">
+    <h2 class="display">Explore Miracle Dome City</h2>
+    <p class="explore__sub">A masterplan for generations</p>
+  </div>
+
+  <div class="explore__map container-wide reveal">
+    <div class="explore__canvas">
+      <Placeholder label="Masterplan aerial" ratio="auto" class="explore__ph" />
+      {
+        hotspots.map((spot) => (
+          <a class="hotspot" href={spot.href} style={`left:${spot.x}; top:${spot.y};`}>
+            <span class="hotspot__ring" aria-hidden="true"></span>
+            <span class="hotspot__label">{spot.label}</span>
+          </a>
+        ))
+      }
+      <div class="explore__cta">
+        <a class="btn" href="#destinations">Click to explore <span aria-hidden="true">→</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .explore {
+    padding-block: var(--space-xl) var(--space-2xl);
+    background: linear-gradient(180deg, var(--color-charcoal), var(--color-charcoal-soft));
+  }
+
+  .explore__intro {
+    text-align: center;
+    margin-bottom: var(--space-lg);
+  }
+
+  .explore__intro .display {
+    margin-inline: auto;
+    max-width: 16ch;
+  }
+
+  .explore__sub {
+    margin-top: 0.75rem;
+    color: var(--color-gold);
+    font-size: 0.78rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+
+  .explore__canvas {
+    position: relative;
+    min-height: clamp(380px, 54vw, 640px);
+    overflow: hidden;
+  }
+
+  .explore__canvas :global(.explore__ph) {
+    min-height: inherit;
+    height: 100%;
+    aspect-ratio: auto;
+  }
+
+  .explore__canvas::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(12, 14, 18, 0.12), rgba(12, 14, 18, 0.55));
+    pointer-events: none;
+  }
+
+  .hotspot {
+    position: absolute;
+    z-index: 2;
+    transform: translate(-50%, -50%);
+    display: grid;
+    justify-items: center;
+    gap: 0.55rem;
+  }
+
+  .hotspot__ring {
+    width: 1.35rem;
+    height: 1.35rem;
+    border: 1px solid var(--color-gold-bright);
+    border-radius: 50%;
+    background: rgba(201, 164, 92, 0.25);
+    animation: pulse 2.6s ease-out infinite;
+  }
+
+  .hotspot__label {
+    padding: 0.45rem 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(12, 14, 18, 0.82);
+    color: var(--color-white);
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .hotspot:hover .hotspot__label { border-color: var(--color-gold); }
+
+  .explore__cta {
+    position: absolute;
+    left: 50%;
+    bottom: 1.4rem;
+    z-index: 2;
+    transform: translateX(-50%);
+  }
+
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(201, 164, 92, 0.45); }
+    70% { box-shadow: 0 0 0 14px rgba(201, 164, 92, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(201, 164, 92, 0); }
+  }
+
+  @media (max-width: 720px) {
+    .hotspot__label {
+      max-width: 9rem;
+      white-space: normal;
+      text-align: center;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hotspot__ring { animation: none; }
+  }
+</style>

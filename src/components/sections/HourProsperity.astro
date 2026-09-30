@@ -1,0 +1,54 @@
+---
+import Placeholder from "../Placeholder.astro";
+---
+
+<section class="prosperity" id="hour-of-prosperity">
+  <div class="prosperity__media" aria-hidden="true">
+    <Placeholder label="Hour of Prosperity" ratio="auto" class="prosperity__ph" />
+  </div>
+  <div class="prosperity__copy container reveal">
+    <p class="eyebrow">The Hour of Prosperity</p>
+    <h2 class="display">Faith on the land.</h2>
+    <p class="lede">
+      Partners gathered on the Miracle Dome City land in prayer — a quieter
+      moment of declaration over the vision that would rise upon it.
+    </p>
+    <a class="btn" href="#contact">View moments <span aria-hidden="true">→</span></a>
+  </div>
+</section>
+
+<style>
+  .prosperity {
+    position: relative;
+    min-height: min(78vh, 720px);
+    display: grid;
+    align-items: end;
+    overflow: hidden;
+    padding-block: var(--space-2xl);
+  }
+
+  .prosperity__media { position: absolute; inset: 0; }
+
+  .prosperity__media :global(.prosperity__ph) {
+    height: 100%;
+    min-height: 100%;
+    aspect-ratio: auto;
+  }
+
+  .prosperity__media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(90deg, rgba(12, 14, 18, 0.82) 0%, rgba(12, 14, 18, 0.45) 55%, rgba(12, 14, 18, 0.25) 100%),
+      linear-gradient(180deg, rgba(12, 14, 18, 0.2), rgba(12, 14, 18, 0.7));
+  }
+
+  .prosperity__copy {
+    position: relative;
+    z-index: 1;
+    max-width: 34rem;
+  }
+
+  .prosperity__copy .btn { margin-top: 1.5rem; }
+</style>

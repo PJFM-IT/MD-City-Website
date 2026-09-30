@@ -1,0 +1,111 @@
+---
+import Placeholder from "../Placeholder.astro";
+
+const destinations = [
+  {
+    id: "zion-grounds",
+    number: "01",
+    title: "Zion Grounds",
+    headline: "A ground for the multitudes.",
+    detail: "24,000 capacity. Envisioned for crusades, worship, ministry and gatherings of multitudes.",
+  },
+  {
+    id: "carmel-hill",
+    number: "02",
+    title: "Carmel Hill",
+    headline: "A place set apart. For prayer. For encounter.",
+    detail: "A dedicated place of prayer and encounter within Miracle Dome City.",
+  },
+  {
+    id: "facility",
+    number: "03",
+    title: "1,500-Bed Facility",
+    headline: "Built to serve.",
+    detail: "Accommodation and food for those travelling long distances seeking ministry and healing.",
+  },
+];
+---
+
+<section class="destinations" id="destinations">
+  <div class="destinations__grid container-wide">
+    {
+      destinations.map((item) => (
+        <article class="destination reveal" id={item.id}>
+          <div class="destination__media">
+            <Placeholder label={item.title} ratio="4 / 5" class="destination__ph" />
+          </div>
+          <div class="destination__body">
+            <p class="destination__num">{item.number} · {item.title}</p>
+            <h3 class="destination__title">{item.headline}</h3>
+            <p class="destination__text">{item.detail}</p>
+            <a class="text-link" href="#contact">Learn more <span aria-hidden="true">→</span></a>
+          </div>
+        </article>
+      ))
+    }
+  </div>
+</section>
+
+<style>
+  .destinations {
+    padding-block: 0 var(--space-xl);
+    background: var(--color-charcoal-soft);
+  }
+
+  .destinations__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+
+  .destination {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    background: var(--color-charcoal);
+  }
+
+  .destination__media {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .destination__media :global(.destination__ph) {
+    min-height: clamp(280px, 34vw, 420px);
+    aspect-ratio: 4 / 5;
+  }
+
+  .destination__body {
+    padding: 1.4rem 1.25rem 1.6rem;
+  }
+
+  .destination__num {
+    margin: 0 0 0.65rem;
+    color: var(--color-gold);
+    font-size: 0.68rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .destination__title {
+    font-family: var(--font-display);
+    font-size: clamp(1.55rem, 2.2vw, 1.95rem);
+    font-weight: 500;
+    line-height: 1.15;
+    max-width: 14ch;
+  }
+
+  .destination__text {
+    margin-top: 0.85rem;
+    color: var(--color-muted);
+    font-size: 0.92rem;
+    line-height: 1.65;
+  }
+
+  @media (max-width: 900px) {
+    .destinations__grid { grid-template-columns: 1fr; }
+    .destination__media :global(.destination__ph) {
+      aspect-ratio: 16 / 10;
+      min-height: 240px;
+    }
+  }
+</style>

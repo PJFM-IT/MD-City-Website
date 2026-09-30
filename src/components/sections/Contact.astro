@@ -1,0 +1,167 @@
+---
+const formspreeId = import.meta.env.PUBLIC_FORMSPREE_ID?.trim();
+const formAction = formspreeId
+  ? `https://formspree.io/f/${formspreeId}`
+  : "mailto:info@prophetjerome.com";
+const usesMailto = !formspreeId;
+---
+
+<section class="contact section" id="contact">
+  <div class="contact__grid container-wide">
+    <div class="contact__copy reveal">
+      <p class="eyebrow">Contact</p>
+      <h2 class="section-title">Be part of the vision</h2>
+      <p class="section-lede">
+        Share your inquiry and our team will respond by email. Visit the Miracle
+        Dome on Katunayake–Veyangoda Road, Katunayake — or reach Prophet Jerome
+        Fernando Ministries directly.
+      </p>
+      <ul class="contact__details">
+        <li>
+          <span>Email</span>
+          <a href="mailto:info@prophetjerome.com">info@prophetjerome.com</a>
+        </li>
+        <li>
+          <span>Phone</span>
+          <a href="tel:+94117774877">+94 11 777 4877</a>
+        </li>
+        <li>
+          <span>Location</span>
+          <p>Miracle Dome, Katunayake–Veyangoda Road, Katunayake, Sri Lanka</p>
+        </li>
+      </ul>
+    </div>
+
+    <form
+      class="contact__form reveal"
+      action={formAction}
+      method={usesMailto ? "GET" : "POST"}
+      enctype={usesMailto ? "text/plain" : undefined}
+      data-mailto={usesMailto ? "true" : undefined}
+    >
+      {!usesMailto && <input type="hidden" name="_subject" value="Miracle Dome City Inquiry" />}
+      <label>
+        <span>Name</span>
+        <input type="text" name={usesMailto ? "subject" : "name"} required autocomplete="name" data-field="name" />
+      </label>
+      <label>
+        <span>Email</span>
+        <input type="email" name="email" required autocomplete="email" data-field="email" />
+      </label>
+      <label>
+        <span>Message</span>
+        <textarea name="body" rows="5" required data-field="message"></textarea>
+      </label>
+      <button class="btn btn--solid" type="submit">Send inquiry</button>
+      {
+        usesMailto && (
+          <p class="contact__note">
+            Opens your email app. For in-browser delivery, add
+            <code>PUBLIC_FORMSPREE_ID</code> to <code>.env</code>.
+          </p>
+        )
+      }
+    </form>
+  </div>
+</section>
+
+<style>
+  .contact {
+    background: #0d1014;
+    border-top: 1px solid var(--color-line);
+  }
+
+  .contact__grid {
+    display: grid;
+    grid-template-columns: 0.9fr 1.1fr;
+    gap: clamp(2rem, 5vw, 4rem);
+    align-items: start;
+  }
+
+  .contact__details {
+    margin: 1.75rem 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 1rem;
+  }
+
+  .contact__details span {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: var(--color-gold);
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .contact__details a,
+  .contact__details p {
+    color: var(--color-muted);
+  }
+
+  .contact__details a:hover {
+    color: var(--color-gold-bright);
+  }
+
+  .contact__form {
+    display: grid;
+    gap: 1rem;
+  }
+
+  label {
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  label span {
+    color: var(--color-stone);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  input,
+  textarea {
+    width: 100%;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--color-line);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--color-white);
+    outline: none;
+    transition: border-color 0.25s var(--ease-out);
+  }
+
+  input:focus,
+  textarea:focus {
+    border-color: var(--color-gold);
+  }
+
+  .contact__note {
+    color: var(--color-stone);
+    font-size: 0.85rem;
+  }
+
+  code {
+    color: var(--color-gold-bright);
+  }
+
+  @media (max-width: 860px) {
+    .contact__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>("form[data-mailto='true']");
+  form?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const name = (form.querySelector("[data-field='name']") as HTMLInputElement)?.value.trim() ?? "";
+    const email = (form.querySelector("[data-field='email']") as HTMLInputElement)?.value.trim() ?? "";
+    const message = (form.querySelector("[data-field='message']") as HTMLTextAreaElement)?.value.trim() ?? "";
+    const subject = encodeURIComponent(`Miracle Dome City Inquiry — ${name}`);
+    const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\n${message}`);
+    window.location.href = `mailto:info@prophetjerome.com?subject=${subject}&body=${body}`;
+  });
+</script>

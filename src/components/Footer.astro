@@ -1,0 +1,108 @@
+---
+const links = [
+  { href: "#vision", label: "About" },
+  { href: "#zion-grounds", label: "Zion Grounds" },
+  { href: "#carmel-hill", label: "Carmel Hill" },
+  { href: "#vision-film", label: "Vision Film" },
+  { href: "#contact", label: "Contact" },
+];
+---
+
+<footer class="site-footer">
+  <div class="site-footer__inner container-wide">
+    <div class="site-footer__brand">
+      <img class="site-footer__logo" src="/images/logo.png" alt="Miracle Dome City" width="200" height="110" />
+    </div>
+
+    <nav class="site-footer__nav" aria-label="Footer">
+      <ul>
+        {links.map((link) => (
+          <li><a href={link.href}>{link.label}</a></li>
+        ))}
+      </ul>
+    </nav>
+
+    <div class="site-footer__meta">
+      <div class="site-footer__social">
+        <a href="https://www.youtube.com/@ProphetJeromeFernando" target="_blank" rel="noreferrer">YouTube</a>
+        <a href="https://www.instagram.com" target="_blank" rel="noreferrer">Instagram</a>
+        <a href="https://www.facebook.com" target="_blank" rel="noreferrer">Facebook</a>
+      </div>
+      <p class="site-footer__url">miracle-domecity.com</p>
+    </div>
+  </div>
+  <div class="site-footer__legal container-wide">
+    <p>© {new Date().getFullYear()} Miracle Dome City · Prophet Jerome Fernando Ministries</p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    border-top: 1px solid var(--color-line);
+    background: #080a0d;
+    padding-block: var(--space-xl) var(--space-lg);
+  }
+
+  .site-footer__inner {
+    display: grid;
+    grid-template-columns: 1.1fr 1.4fr 1fr;
+    gap: 2rem;
+    align-items: center;
+  }
+
+  .site-footer__logo {
+    width: min(190px, 58vw);
+    height: auto;
+    background: #fff;
+    padding: 0.5rem 0.65rem;
+  }
+
+  .site-footer__nav ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.85rem 1.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .site-footer__nav a,
+  .site-footer__social a {
+    color: var(--color-muted);
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    transition: color 0.25s var(--ease-out);
+  }
+
+  .site-footer__nav a:hover,
+  .site-footer__social a:hover {
+    color: var(--color-gold-bright);
+  }
+
+  .site-footer__social {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.85rem 1rem;
+    margin-bottom: 0.7rem;
+  }
+
+  .site-footer__url,
+  .site-footer__legal {
+    color: var(--color-stone);
+    font-size: 0.78rem;
+  }
+
+  .site-footer__legal {
+    margin-top: var(--space-lg);
+    padding-top: var(--space-md);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  @media (max-width: 800px) {
+    .site-footer__inner {
+      grid-template-columns: 1fr;
+      align-items: start;
+    }
+  }
+</style>

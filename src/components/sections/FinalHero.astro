@@ -1,0 +1,68 @@
+---
+import Placeholder from "../Placeholder.astro";
+---
+
+<section class="final-hero" id="final-hero">
+  <div class="final-hero__media" aria-hidden="true">
+    <Placeholder label="Final aerial" ratio="auto" class="final-hero__ph" />
+  </div>
+  <div class="final-hero__content container reveal">
+    <h2 class="display">This is more than a vision. It is a legacy.</h2>
+    <p class="final-hero__brand">Miracle Dome City</p>
+    <p class="final-hero__tagline">Where Heaven Meets Earth</p>
+    <a class="btn btn--solid" href="#contact">Be part of the vision <span aria-hidden="true">→</span></a>
+  </div>
+</section>
+
+<style>
+  .final-hero {
+    position: relative;
+    min-height: 90svh;
+    display: grid;
+    align-items: end;
+    overflow: hidden;
+    padding-block: var(--space-3xl);
+  }
+
+  .final-hero__media { position: absolute; inset: 0; }
+
+  .final-hero__media :global(.final-hero__ph) {
+    height: 100%;
+    min-height: 100%;
+    aspect-ratio: auto;
+  }
+
+  .final-hero__media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(90deg, rgba(12, 14, 18, 0.82) 0%, rgba(12, 14, 18, 0.5) 55%, rgba(12, 14, 18, 0.35) 100%),
+      linear-gradient(180deg, rgba(12, 14, 18, 0.25), rgba(12, 14, 18, 0.85));
+  }
+
+  .final-hero__content {
+    position: relative;
+    z-index: 1;
+    max-width: 38rem;
+  }
+
+  .final-hero__content .display { max-width: 14ch; }
+
+  .final-hero__brand {
+    margin-top: 1.25rem;
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-white);
+  }
+
+  .final-hero__tagline {
+    margin: 0.5rem 0 1.75rem;
+    color: var(--color-gold-bright);
+    font-family: var(--font-display);
+    font-size: clamp(1.35rem, 2.5vw, 1.85rem);
+    font-style: italic;
+  }
+</style>

@@ -1,0 +1,121 @@
+---
+const stats = [
+  { value: "24,000", label: "Capacity · Zion Grounds", icon: null },
+  { value: "1,500", label: "Beds · Accommodation", icon: null },
+  {
+    value: null,
+    label: "Large Car Park",
+    icon: "car",
+  },
+  {
+    value: null,
+    label: "One Vision · Miracle Dome City",
+    icon: "globe",
+  },
+];
+---
+
+<section class="numbers" id="city-numbers">
+  <div class="numbers__inner container-wide reveal">
+    <h2 class="numbers__heading">The City in Numbers</h2>
+    <div class="numbers__grid">
+      {
+        stats.map((stat) => (
+          <article class="numbers__item">
+            {stat.icon === "car" && (
+              <span class="numbers__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.4">
+                  <path d="M3 13.5h18l-1.5-5.2A2 2 0 0 0 17.6 7H6.4a2 2 0 0 0-1.9 1.3L3 13.5Z" />
+                  <path d="M5 16.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm14 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" />
+                  <path d="M3 13.5h18v2.2a1.3 1.3 0 0 1-1.3 1.3H4.3A1.3 1.3 0 0 1 3 15.7v-2.2Z" />
+                </svg>
+              </span>
+            )}
+            {stat.icon === "globe" && (
+              <span class="numbers__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.4">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z" />
+                </svg>
+              </span>
+            )}
+            {stat.value && <p class="numbers__value">{stat.value}</p>}
+            <p class="numbers__label">{stat.label}</p>
+          </article>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .numbers {
+    padding-block: var(--space-xl);
+    background: #0a0c10;
+    border-block: 1px solid var(--color-line);
+  }
+
+  .numbers__heading {
+    margin-bottom: var(--space-lg);
+    font-family: var(--font-display);
+    font-size: clamp(1.8rem, 3vw, 2.5rem);
+    font-weight: 500;
+    text-align: center;
+  }
+
+  .numbers__grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .numbers__item {
+    display: grid;
+    justify-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1.25rem;
+    text-align: center;
+    border-right: 1px solid var(--color-line);
+  }
+
+  .numbers__item:last-child {
+    border-right: 0;
+  }
+
+  .numbers__icon {
+    color: var(--color-gold-bright);
+    display: grid;
+    place-items: center;
+    min-height: 2.6rem;
+  }
+
+  .numbers__value {
+    font-family: var(--font-display);
+    font-size: clamp(2.4rem, 4.5vw, 3.6rem);
+    font-weight: 500;
+    line-height: 1;
+    color: var(--color-white);
+  }
+
+  .numbers__label {
+    color: var(--color-stone);
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 800px) {
+    .numbers__grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem 0;
+    }
+
+    .numbers__item:nth-child(2n) {
+      border-right: 0;
+    }
+
+    .numbers__item:nth-child(-n + 2) {
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--color-line);
+    }
+  }
+</style>

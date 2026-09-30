@@ -1,0 +1,210 @@
+---
+const links = [
+  { href: "#top", label: "Home" },
+  { href: "#vision", label: "The Vision" },
+  { href: "#explore", label: "Explore" },
+  { href: "#zion-grounds", label: "Zion Grounds" },
+  { href: "#carmel-hill", label: "Carmel Hill" },
+  { href: "#facility", label: "Facility" },
+  { href: "#historic-moments", label: "Historic Moments" },
+  { href: "#contact", label: "Contact" },
+];
+---
+
+<header class="site-header" data-header>
+  <div class="site-header__inner container-wide">
+    <a class="brand" href="#top" aria-label="Miracle Dome City — Home">
+      <img class="brand__mark" src="/images/logo.png" alt="" width="120" height="66" />
+      <span class="brand__name">Miracle Dome City</span>
+    </a>
+
+    <button
+      class="nav-toggle"
+      type="button"
+      aria-expanded="false"
+      aria-controls="site-nav"
+      data-nav-toggle
+    >
+      <span class="nav-toggle__bars" aria-hidden="true"></span>
+      <span class="visually-hidden">Menu</span>
+    </button>
+
+    <nav class="site-nav" id="site-nav" data-nav>
+      <ul class="site-nav__list">
+        {links.map((link) => (
+          <li>
+            <a href={link.href}>{link.label}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 50;
+    height: var(--header-h);
+    background: linear-gradient(180deg, rgba(12, 14, 18, 0.72), transparent);
+    transition: background 0.35s var(--ease-out), backdrop-filter 0.35s var(--ease-out);
+  }
+
+  .site-header.is-scrolled {
+    background: rgba(12, 14, 18, 0.9);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .site-header__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+    gap: 1rem;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+  }
+
+  .brand__mark {
+    width: auto;
+    height: 2.35rem;
+    background: #fff;
+    padding: 0.2rem 0.35rem;
+  }
+
+  .brand__name {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-white);
+  }
+
+  .site-nav__list {
+    display: flex;
+    align-items: center;
+    gap: 1.15rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .site-nav a {
+    color: rgba(244, 241, 236, 0.78);
+    font-size: 0.68rem;
+    font-weight: 400;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    transition: color 0.25s var(--ease-out);
+  }
+
+  .site-nav a:hover,
+  .site-nav a:focus-visible {
+    color: var(--color-gold-bright);
+    outline: none;
+  }
+
+  .nav-toggle {
+    display: none;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid var(--color-line);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-white);
+    cursor: pointer;
+  }
+
+  .nav-toggle__bars,
+  .nav-toggle__bars::before,
+  .nav-toggle__bars::after {
+    display: block;
+    width: 1rem;
+    height: 1px;
+    margin-inline: auto;
+    background: currentColor;
+    content: "";
+  }
+
+  .nav-toggle__bars::before {
+    transform: translateY(-5px);
+  }
+
+  .nav-toggle__bars::after {
+    transform: translateY(4px);
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  @media (max-width: 980px) {
+    .brand__name {
+      font-size: 0.92rem;
+    }
+
+    .nav-toggle {
+      display: grid;
+      place-items: center;
+    }
+
+    .site-nav {
+      position: fixed;
+      inset: var(--header-h) 1rem auto;
+      padding: 1.1rem 1.2rem 1.35rem;
+      border: 1px solid var(--color-line);
+      border-radius: 12px;
+      background: rgba(12, 14, 18, 0.96);
+      transform: translateY(-12px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s var(--ease-out), transform 0.3s var(--ease-out);
+    }
+
+    .site-nav.is-open {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .site-nav__list {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.95rem;
+    }
+  }
+</style>
+
+<script>
+  const header = document.querySelector("[data-header]");
+  const toggle = document.querySelector("[data-nav-toggle]");
+  const nav = document.querySelector("[data-nav]");
+
+  const onScroll = () => {
+    header?.classList.toggle("is-scrolled", window.scrollY > 20);
+  };
+  onScroll();
+  window.addEventListener("scroll", onScroll, { passive: true });
+
+  toggle?.addEventListener("click", () => {
+    const open = nav?.classList.toggle("is-open");
+    toggle.setAttribute("aria-expanded", String(Boolean(open)));
+  });
+
+  nav?.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => {
+      nav.classList.remove("is-open");
+      toggle?.setAttribute("aria-expanded", "false");
+    });
+  });
+</script>

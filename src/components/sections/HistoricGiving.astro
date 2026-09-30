@@ -1,0 +1,86 @@
+---
+import Placeholder from "../Placeholder.astro";
+---
+
+<section class="historic" id="historic-moments">
+  <div class="historic__grid container-wide">
+    <div class="historic__copy reveal">
+      <p class="eyebrow">A Historic Day of Giving</p>
+      <h2 class="display">A people stood behind the vision.</h2>
+      <p class="lede">
+        Scores lined up, one after another, to give towards the vision — a
+        documentary moment of faith, unity and legacy that continues into
+        Miracle Dome City.
+      </p>
+      <a class="btn" href="#contact">View gallery <span aria-hidden="true">→</span></a>
+    </div>
+
+    <div class="historic__collage reveal">
+      <div class="historic__shot historic__shot--hero">
+        <Placeholder label="Historic hero" ratio="auto" />
+      </div>
+      <div class="historic__shot">
+        <Placeholder label="Gallery 1" ratio="auto" />
+      </div>
+      <div class="historic__shot">
+        <Placeholder label="Gallery 2" ratio="auto" />
+      </div>
+      <div class="historic__shot">
+        <Placeholder label="Gallery 3" ratio="auto" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .historic {
+    padding-block: var(--space-2xl);
+    background: var(--color-charcoal);
+  }
+
+  .historic__grid {
+    display: grid;
+    grid-template-columns: 0.9fr 1.1fr;
+    gap: clamp(1.5rem, 4vw, 3rem);
+    align-items: center;
+  }
+
+  .historic__copy .display { max-width: 12ch; }
+  .historic__copy .btn { margin-top: 1.75rem; }
+
+  .historic__collage {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 0.75rem;
+    min-height: 480px;
+  }
+
+  .historic__shot {
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .historic__shot :global(.ph) {
+    height: 100%;
+    min-height: 100%;
+    aspect-ratio: auto;
+  }
+
+  .historic__shot--hero { grid-row: 1 / span 2; }
+
+  @media (max-width: 900px) {
+    .historic__grid { grid-template-columns: 1fr; }
+    .historic__collage {
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto;
+      min-height: 0;
+    }
+    .historic__shot--hero {
+      grid-column: 1 / -1;
+      grid-row: auto;
+      min-height: 260px;
+    }
+    .historic__shot:not(.historic__shot--hero) { min-height: 160px; }
+  }
+</style>
