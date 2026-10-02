@@ -57,8 +57,8 @@ export const hotspots = [
     href: "#carmel-hill",
     x: "52%",
     y: "54%",
-    // Base of the cross; the card opens below so the cross stays visible.
-    anchor: [0, 45, -40] as [number, number, number],
+    // On the south slope below the summit; the card opens below so the cross stays visible.
+    anchor: [0, 30, -14] as [number, number, number],
     card: "below",
     image: "carmel" as const,
   },
@@ -74,6 +74,20 @@ export const hotspots = [
     image: "zion" as const,
   },
   {
+    // The existing Miracle Dome (opened 2022) on Katunayake–Veyangoda Road, ~1.3 km from the airport.
+    id: "dome",
+    label: "The Miracle Dome",
+    fact: "5,000 seats",
+    text: "The Miracle Dome beside Carmel Hill, opened in 2022 — where the vision began.",
+    href: "#contact",
+    x: "63%",
+    y: "50%",
+    anchor: [110, 24, -45] as [number, number, number],
+    // Card opens upwards over the sky so the building stays visible.
+    card: "above",
+    image: "miracleDome" as const,
+  },
+  {
     id: "carpark",
     label: "Large Car Park",
     fact: "Built for the crowds",
@@ -81,7 +95,7 @@ export const hotspots = [
     href: "#city-numbers",
     x: "86%",
     y: "80%",
-    anchor: [104, 6, 34] as [number, number, number],
+    anchor: [140, 7, 22] as [number, number, number],
     image: null,
   },
 ];
@@ -101,6 +115,8 @@ export const media = {
   prosperity: "",
   visionary: "",
   finalHero: "",
+  /** Real photo of the existing Miracle Dome (shown in its 3D map card). */
+  miracleDome: "/images/miracle-dome.png",
 };
 
 /** `src` empty = the illustrated `scene` is shown instead. */
