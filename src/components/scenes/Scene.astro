@@ -1,0 +1,24 @@
+---
+import AerialScene from "./AerialScene.astro";
+import VenueScene from "./VenueScene.astro";
+import PeopleScene from "./PeopleScene.astro";
+import type { PeopleVariant, SceneName, VenueVariant } from "../../scenes/types";
+
+interface Props {
+  name: SceneName;
+  seed?: number;
+  class?: string;
+}
+
+const { name, seed, class: className } = Astro.props;
+const venues: string[] = ["vision", "zion", "carmel", "facility"];
+const isAerial = name === "aerial" || name === "aerial-night";
+const isVenue = venues.includes(name);
+---
+
+<div class:list={["scene", className]} data-scene>
+  {isAerial && <AerialScene mood={name === "aerial-night" ? "night" : "sunset"} seed={seed} />}
+  {isVenue && <VenueScene variant={name as VenueVariant} seed={seed} />}
+  {!isAerial && !isVenue && <PeopleScene variant={name as PeopleVariant} seed={seed} />}
+  <span class="scene__light" aria-hidden="true"></span>
+</div>

@@ -1,86 +1,187 @@
 ---
 import Placeholder from "../Placeholder.astro";
+import { givingGallery } from "../../data/site";
+
+const [hero, ...collage] = givingGallery;
 ---
 
-<section class="historic" id="historic-moments">
-  <div class="historic__grid container-wide">
+<section class="historic band" id="historic-moments">
+  <div class="historic__lead">
+    <div class="band__media" aria-hidden="true" data-gallery-item="giving-0">
+      <div data-parallax="0.05">
+        <Placeholder label={hero.alt} src={hero.src || undefined} scene={hero.scene} ratio="auto" class="historic__hero-ph" />
+      </div>
+    </div>
     <div class="historic__copy reveal">
       <p class="eyebrow">A Historic Day of Giving</p>
       <h2 class="display">A people stood behind the vision.</h2>
-      <p class="lede">
-        Scores lined up, one after another, to give towards the vision — a
-        documentary moment of faith, unity and legacy that continues into
-        Miracle Dome City.
+      <p class="historic__text">
+        Scores and scores of people lined up, one after another, to give
+        towards the vision of Miracle Dome City. It became a visible expression
+        of faith, unity and a generation standing together for what God is
+        building for the nations.
       </p>
-      <a class="btn" href="#contact">View gallery <span aria-hidden="true">→</span></a>
-    </div>
-
-    <div class="historic__collage reveal">
-      <div class="historic__shot historic__shot--hero">
-        <Placeholder label="Historic hero" ratio="auto" />
-      </div>
-      <div class="historic__shot">
-        <Placeholder label="Gallery 1" ratio="auto" />
-      </div>
-      <div class="historic__shot">
-        <Placeholder label="Gallery 2" ratio="auto" />
-      </div>
-      <div class="historic__shot">
-        <Placeholder label="Gallery 3" ratio="auto" />
-      </div>
+      <button class="btn" type="button" data-lightbox="giving" data-index="0">
+        View gallery <span aria-hidden="true">→</span>
+      </button>
     </div>
   </div>
+
+  <ul class="historic__collage reveal" aria-label="Day of giving photos">
+    {
+      collage.map((item, i) => (
+        <li data-gallery-item={`giving-${i + 1}`}>
+          <button
+            class="historic__shot"
+            type="button"
+            data-lightbox="giving"
+            data-index={i + 1}
+            aria-label={`Open photo: ${item.alt}`}
+          >
+            <Placeholder label={item.alt} src={item.src || undefined} scene={item.scene} seed={i + 3} ratio="auto" />
+            <span class="historic__zoom" aria-hidden="true">+</span>
+          </button>
+        </li>
+      ))
+    }
+  </ul>
 </section>
 
 <style>
   .historic {
-    padding-block: var(--space-2xl);
+    display: grid;
+    grid-template-columns: 1.7fr 1fr;
+    min-height: min(70vh, 560px);
     background: var(--color-charcoal);
   }
 
-  .historic__grid {
-    display: grid;
-    grid-template-columns: 0.9fr 1.1fr;
-    gap: clamp(1.5rem, 4vw, 3rem);
+  .historic__lead {
+    position: relative;
+    display: flex;
     align-items: center;
+    overflow: hidden;
   }
 
-  .historic__copy .display { max-width: 12ch; }
-  .historic__copy .btn { margin-top: 1.75rem; }
+  .historic__lead :global(.historic__hero-ph) {
+    filter: grayscale(1);
+  }
+
+  .historic__lead .band__media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(12, 14, 18, 0.95) 0%, rgba(12, 14, 18, 0.7) 40%, rgba(12, 14, 18, 0.1) 100%);
+  }
+
+  .historic__copy {
+    position: relative;
+    z-index: 1;
+    max-width: 34rem;
+    padding: var(--band-pad) clamp(1.25rem, 4vw, 4rem);
+  }
+
+  .historic__copy .display {
+    max-width: 17ch;
+    font-size: clamp(1.8rem, 3.4vw, 2.7rem);
+  }
+
+  .historic__text {
+    max-width: 25rem;
+    margin-top: 1rem;
+    color: var(--color-muted);
+    font-size: 0.86rem;
+    line-height: 1.65;
+  }
+
+  .historic__copy .btn { margin-top: 1.5rem; }
 
   .historic__collage {
     display: grid;
-    grid-template-columns: 1.4fr 1fr;
+    grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
-    gap: 0.75rem;
-    min-height: 480px;
+    gap: 3px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    background: var(--color-charcoal);
   }
 
   .historic__shot {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
     overflow: hidden;
-    min-height: 0;
+    background: none;
+    cursor: zoom-in;
   }
 
   .historic__shot :global(.ph) {
     height: 100%;
     min-height: 100%;
     aspect-ratio: auto;
+    transition: transform 1s var(--ease-out);
   }
 
-  .historic__shot--hero { grid-row: 1 / span 2; }
+  .historic__zoom {
+    position: absolute;
+    right: 0.6rem;
+    bottom: 0.6rem;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--color-gold-bright);
+    border-radius: 50%;
+    background: rgba(12, 14, 18, 0.6);
+    color: var(--color-gold-bright);
+    opacity: 0;
+    transition: opacity 0.3s var(--ease-out);
+  }
+
+  .historic__shot:hover :global(.ph),
+  .historic__shot:focus-visible :global(.ph) {
+    transform: scale(1.07);
+  }
+
+  .historic__shot:hover .historic__zoom,
+  .historic__shot:focus-visible .historic__zoom {
+    opacity: 1;
+  }
+
+  .historic__shot:focus-visible {
+    outline: 1px solid var(--color-gold);
+    outline-offset: -1px;
+  }
 
   @media (max-width: 900px) {
-    .historic__grid { grid-template-columns: 1fr; }
+    .historic { grid-template-columns: 1fr; }
+    .historic__lead { min-height: 440px; }
+
+    /* Horizontal swipe strip on mobile */
     .historic__collage {
-      grid-template-columns: 1fr 1fr;
-      grid-template-rows: auto;
-      min-height: 0;
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.5rem clamp(1rem, 4vw, 1.5rem) 1rem;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
     }
-    .historic__shot--hero {
-      grid-column: 1 / -1;
-      grid-row: auto;
-      min-height: 260px;
+
+    .historic__collage::-webkit-scrollbar { display: none; }
+
+    .historic__collage li {
+      flex: 0 0 72%;
+      height: 220px;
+      scroll-snap-align: start;
     }
-    .historic__shot:not(.historic__shot--hero) { min-height: 160px; }
+
+    .historic__zoom { opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .historic__shot :global(.ph) { transition: none; }
   }
 </style>

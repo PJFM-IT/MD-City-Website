@@ -1,0 +1,226 @@
+﻿---
+// Architectural scenes: the Vision building, Zion Grounds, Carmel Hill and the 1,500-bed facility.
+import { palm, person, ridge, rng, twinkle, uid } from "../../scenes/draw";
+
+interface Props {
+  variant: "vision" | "zion" | "carmel" | "facility";
+  seed?: number;
+}
+
+const { variant, seed = 11 } = Astro.props;
+const r = rng(seed);
+const id = uid(variant);
+
+const sky = {
+  vision: ["#121625", "#3a3140", "#d58a55"],
+  zion: ["#05070d", "#141a2b", "#4b3424"],
+  carmel: ["#141629", "#4a3a55", "#b9876c"],
+  facility: ["#161b2a", "#4a3c3c", "#dd9a5e"],
+}[variant];
+
+// Vision building: a long curved glass hall.
+const mullions = Array.from({ length: 34 }, (_, i) => 640 + i * 27);
+const visitors = Array.from({ length: 46 }, () => ({ x: 560 + r() * 1000, h: 26 + r() * 22, flip: r() > 0.5 }));
+
+// Zion Grounds: perspective bowl filled with people.
+const ZX = 800, ZY = 650;
+const crowd = Array.from({ length: 750 }, () => {
+  const a = r() * Math.PI * 2;
+  const d = 0.18 + Math.sqrt(r()) * 0.8;
+  const x = ZX + Math.cos(a) * 760 * d;
+  const y = ZY + Math.sin(a) * 210 * d;
+  return { x, y, s: 1.4 + (y - 440) / 140, lit: r() };
+});
+const towers = [120, 420, 1180, 1480];
+
+// Carmel Hill
+const hillTrees = Array.from({ length: 70 }, () => {
+  const t = r();
+  return { x: 260 + t * 1080, y: 360 + Math.abs(t - 0.5) * 560 + r() * 160, r: 14 + r() * 22 };
+});
+const pathLights = Array.from({ length: 14 }, (_, i) => ({
+  x: 800 + Math.sin(i * 1.1) * (230 - i * 14),
+  y: 860 - i * 38,
+  t: twinkle(r),
+}));
+
+// Facility: multi-storey block with lit windows.
+const floors = 7;
+const facWindows = Array.from({ length: floors * 26 }, (_, i) => ({
+  x: 330 + (i % 26) * 40,
+  y: 300 + Math.floor(i / 26) * 52,
+  on: r() > 0.25,
+  t: twinkle(r),
+}));
+const guests = Array.from({ length: 38 }, () => ({ x: 260 + r() * 1100, h: 34 + r() * 22, flip: r() > 0.5 }));
+---
+
+<svg class="scene__svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id={`${id}-sky`} x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color={sky[0]} />
+      <stop offset="0.5" stop-color={sky[1]} />
+      <stop offset="0.78" stop-color={sky[2]} />
+    </linearGradient>
+    <radialGradient id={`${id}-sun`}>
+      <stop offset="0" stop-color="#fff0c9" stop-opacity="0.85" />
+      <stop offset="0.3" stop-color="#e9a565" stop-opacity="0.3" />
+      <stop offset="1" stop-color="#e9a565" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id={`${id}-glass`} x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8d6b4a" />
+      <stop offset="0.5" stop-color="#e6b676" />
+      <stop offset="1" stop-color="#ffdca0" />
+    </linearGradient>
+    <linearGradient id={`${id}-ground`} x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#211d19" />
+      <stop offset="1" stop-color="#0a0a0b" />
+    </linearGradient>
+    <radialGradient id={`${id}-bowl`}>
+      <stop offset="0" stop-color="#ffe3a8" stop-opacity="0.9" />
+      <stop offset="0.5" stop-color="#a26a36" stop-opacity="0.55" />
+      <stop offset="1" stop-color="#140f0a" stop-opacity="1" />
+    </radialGradient>
+    <linearGradient id={`${id}-beam`} x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#fff2cc" stop-opacity="0.6" />
+      <stop offset="1" stop-color="#fff2cc" stop-opacity="0" />
+    </linearGradient>
+    <clipPath id={`${id}-hall`}><path d="M600,480 Q1100,330 1600,470 L1600,740 L600,740 Z" /></clipPath>
+    <filter id={`${id}-glow`} x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="10" /></filter>
+    <filter id={`${id}-soft`} x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="16" /></filter>
+  </defs>
+
+  <g data-depth="0"><rect x="-100" y="-200" width="1800" height="1300" fill={`url(#${id}-sky)`} /></g>
+
+  {
+    variant === "vision" && (
+      <>
+        <g data-depth="0.08"><circle class="pulse" cx="1250" cy="520" r="360" fill={`url(#${id}-sun)`} /></g>
+        <g data-depth="0.12">
+          <g class="drift">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <path d={`M${900 + i * 46},${120 + (i % 2) * 24}q8,-8 16,0q8,-8 16,0`} fill="none" stroke="#1a1a1f" stroke-width="2.2" />
+            ))}
+          </g>
+        </g>
+        <g data-depth="0.2"><path d={ridge(r, -100, 1700, 640, 70, 10)} fill="#2a2630" /></g>
+        <g data-depth="0.45">
+          <path d="M600,480 Q1100,330 1600,470 L1600,740 L600,740 Z" fill={`url(#${id}-glass)`} />
+          <g clip-path={`url(#${id}-hall)`}>
+            {mullions.map((x) => <line x1={x} y1="330" x2={x} y2="740" stroke="#2b2017" stroke-width="3" />)}
+            {[540, 600, 660].map((y) => <line x1="600" y1={y} x2="1600" y2={y} stroke="#2b2017" stroke-width="2" opacity="0.8" />)}
+          </g>
+          <path d="M580,486 Q1100,320 1620,474 L1620,452 Q1100,296 580,464 Z" fill="#e8e1d6" />
+          <rect x="580" y="740" width="1040" height="14" fill="#cfc4b4" />
+        </g>
+        <g data-depth="0.55">
+          <rect x="-100" y="754" width="1800" height="360" fill={`url(#${id}-ground)`} />
+          <path d="M600,760 L1600,760 L1600,860 Q1100,900 600,850 Z" fill="#ffd38f" opacity="0.12" />
+        </g>
+        <g data-depth="0.65" fill="#0b0b0d">
+          {visitors.map((v, i) => <path d={person(v.x, 790 + (v.h - 26), v.h, "stand", v.flip, i % 3 === 0)} />)}
+        </g>
+        <g data-depth="0.85" fill="#060708">
+          <path d={palm(140, 920, 620, 0.12)} />
+          <path d={palm(380, 940, 460, -0.1)} />
+          <path d={palm(1540, 940, 520, -0.14)} />
+        </g>
+      </>
+    )
+  }
+
+  {
+    variant === "zion" && (
+      <>
+        <g data-depth="0.05">
+          {Array.from({ length: 40 }, () => <circle class="twinkle" cx={r() * 1600} cy={r() * 300} r={0.6 + r()} fill="#f4f1ec" style={twinkle(r)} />)}
+        </g>
+        <g data-depth="0.15"><path d={ridge(r, -100, 1700, 430, 70, 8)} fill="#0e1119" /></g>
+        <g data-depth="0.35">
+          <ellipse cx={ZX} cy={ZY} rx="800" ry="235" fill="#16120d" stroke="#c9a45c" stroke-width="3" />
+          <ellipse cx={ZX} cy={ZY} rx="770" ry="215" fill={`url(#${id}-bowl)`} />
+        </g>
+        <g data-depth="0.5">
+          {crowd.map((p) => (
+            <circle cx={p.x.toFixed(1)} cy={p.y.toFixed(1)} r={Math.max(1, p.s).toFixed(1)} fill={p.lit > 0.75 ? "#ffe9bf" : p.lit > 0.3 ? "#2a1a0e" : "#6b4527"} />
+          ))}
+        </g>
+        <g data-depth="0.55">
+          <ellipse cx={ZX} cy={ZY - 10} rx="70" ry="22" fill="#fff6de" />
+          <ellipse cx={ZX} cy={ZY - 10} rx="130" ry="48" fill="#ffe2a6" opacity="0.4" filter={`url(#${id}-glow)`} />
+          {[-1, 0, 1].map((k) => (
+            <polygon class="beam" points={`${ZX - 18 + k * 30},${ZY - 14} ${ZX + 18 + k * 30},${ZY - 14} ${ZX + 70 + k * 260},-60 ${ZX - 70 + k * 260},-60`} fill={`url(#${id}-beam)`} opacity={k === 0 ? 0.9 : 0.5} />
+          ))}
+        </g>
+        <g data-depth="0.7">
+          {towers.map((x) => (
+            <g>
+              <rect x={x - 4} y="300" width="8" height="380" fill="#0a0b0e" />
+              <rect x={x - 26} y="290" width="52" height="16" fill="#fff4dc" class="twinkle twinkle--soft" style={twinkle(r)} />
+              <circle cx={x} cy="298" r="60" fill="#fff0c8" opacity="0.25" filter={`url(#${id}-glow)`} />
+            </g>
+          ))}
+        </g>
+      </>
+    )
+  }
+
+  {
+    variant === "carmel" && (
+      <>
+        <g data-depth="0.05">
+          {Array.from({ length: 30 }, () => <circle class="twinkle" cx={r() * 1600} cy={r() * 260} r={0.6 + r()} fill="#f4f1ec" style={twinkle(r)} />)}
+        </g>
+        <g data-depth="0.1" filter={`url(#${id}-soft)`} opacity="0.5">
+          <ellipse class="drift" cx="300" cy="300" rx="300" ry="30" fill="#b28a8a" />
+          <ellipse class="drift drift--slow" cx="1300" cy="250" rx="280" ry="26" fill="#a98584" />
+        </g>
+        <g data-depth="0.18"><path d={ridge(r, -100, 1700, 620, 120, 8)} fill="#2a2537" /></g>
+        <g data-depth="0.38">
+          <path d="M140,960 C420,700 600,260 800,230 C1000,260 1180,700 1460,960 Z" fill="#141716" />
+          {hillTrees.map((t) => <circle cx={t.x} cy={t.y} r={t.r} fill="#0c0f0e" />)}
+          <path d="M800,900 C560,860 1040,800 790,750 C560,700 1000,650 800,600 C640,560 940,500 800,440 C700,400 880,340 800,280" fill="none" stroke="#e4c57a" stroke-width="2.4" stroke-dasharray="4 9" opacity="0.65" />
+          {pathLights.map((l) => <circle class="twinkle" cx={l.x} cy={l.y} r="3.2" fill="#ffe2a6" style={l.t} />)}
+          <g class="glow">
+            <circle cx="800" cy="150" r="110" fill="#ffe2a6" opacity="0.35" filter={`url(#${id}-glow)`} />
+            <rect x="793" y="60" width="14" height="190" fill="#fff6e2" />
+            <rect x="752" y="102" width="96" height="14" fill="#fff6e2" />
+          </g>
+        </g>
+        <g data-depth="0.85" fill="#060708">
+          {Array.from({ length: 18 }, () => <circle cx={r() * 1700 - 50} cy={880 + r() * 60} r={40 + r() * 50} />)}
+        </g>
+      </>
+    )
+  }
+
+  {
+    variant === "facility" && (
+      <>
+        <g data-depth="0.08"><circle class="pulse" cx="1300" cy="430" r="340" fill={`url(#${id}-sun)`} /></g>
+        <g data-depth="0.18"><path d={ridge(r, -100, 1700, 600, 80, 10)} fill="#2d2830" /></g>
+        <g data-depth="0.42">
+          <rect x="300" y="250" width="1060" height="430" fill="#d9d0c3" />
+          <rect x="300" y="236" width="1060" height="18" fill="#efe8dd" />
+          {facWindows.map((w) => (
+            <rect class={w.on ? "twinkle twinkle--soft" : undefined} x={w.x} y={w.y} width="28" height="36" fill={w.on ? "#ffcf86" : "#4a4440"} style={w.on ? w.t : undefined} />
+          ))}
+          {Array.from({ length: floors }, (_, i) => <rect x="300" y={290 + i * 52} width="1060" height="4" fill="#efe8dd" />)}
+          <rect x="680" y="620" width="300" height="60" fill="#ffd994" />
+        </g>
+        <g data-depth="0.55">
+          <rect x="-100" y="680" width="1800" height="420" fill={`url(#${id}-ground)`} />
+          <ellipse cx="830" cy="700" rx="420" ry="40" fill="#ffd38f" opacity="0.15" />
+        </g>
+        <g data-depth="0.65" fill="#0b0b0d">
+          {guests.map((g, i) => <path d={person(g.x, 720 + (g.h - 34) * 2, g.h, "stand", g.flip, i % 3 === 0)} />)}
+        </g>
+        <g data-depth="0.85" fill="#060708">
+          <path d={palm(160, 940, 640, 0.1)} />
+          <path d={palm(1460, 950, 600, -0.12)} />
+          <path d={palm(1590, 960, 420, -0.2)} />
+        </g>
+      </>
+    )
+  }
+</svg>

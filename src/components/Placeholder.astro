@@ -1,35 +1,73 @@
 ---
+import Scene from "./scenes/Scene.astro";
+import type { SceneName } from "../scenes/types";
+
 interface Props {
   label?: string;
   ratio?: string;
   class?: string;
+  /** Real image path. Takes priority over `scene`. */
+  src?: string;
+  /** Illustrated stand-in scene shown until a real image is supplied. */
+  scene?: SceneName;
+  seed?: number;
+  tone?: "warm" | "dusk" | "mono";
 }
 
-const { label = "Image", ratio = "16 / 9", class: className = "" } = Astro.props;
+const { label = "Image", ratio = "16 / 9", class: className = "", src, scene, seed, tone = "warm" } = Astro.props;
 ---
 
-<div class:list={["ph", className]} style={`--ph-ratio: ${ratio}`} role="img" aria-label={label}>
-  <span class="ph__grain" aria-hidden="true"></span>
-</div>
+{
+  src ? (
+    <img class:list={["ph", "ph--img", className]} style={`--ph-ratio: ${ratio}`} src={src} alt={label} loading="lazy" decoding="async" />
+  ) : scene ? (
+    <div class:list={["ph", "ph--scene", className]} style={`--ph-ratio: ${ratio}`} role="img" aria-label={label}>
+      <Scene name={scene} seed={seed} />
+    </div>
+  ) : (
+    <div class:list={["ph", `ph--${tone}`, className]} style={`--ph-ratio: ${ratio}`} role="img" aria-label={label}>
+      <span class="ph__grain" aria-hidden="true"></span>
+    </div>
+  )
+}
 
 <style>
   .ph {
     position: relative;
+    display: block;
     width: 100%;
     height: 100%;
     min-height: 12rem;
     aspect-ratio: var(--ph-ratio);
     overflow: hidden;
     background:
-      radial-gradient(ellipse at 28% 18%, rgba(201, 164, 92, 0.1), transparent 50%),
-      radial-gradient(ellipse at 78% 70%, rgba(184, 167, 142, 0.06), transparent 45%),
-      linear-gradient(155deg, #171b22 0%, #0c0e12 52%, #12100c 100%);
+      radial-gradient(ellipse at 70% 12%, rgba(228, 197, 122, 0.22), transparent 42%),
+      radial-gradient(ellipse at 28% 70%, rgba(201, 164, 92, 0.1), transparent 50%),
+      radial-gradient(ellipse at 78% 80%, rgba(184, 167, 142, 0.08), transparent 45%),
+      linear-gradient(170deg, #2a2620 0%, #171b22 38%, #0c0e12 70%, #12100c 100%);
+  }
+
+  .ph--dusk {
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(228, 170, 110, 0.28), transparent 50%),
+      radial-gradient(ellipse at 20% 80%, rgba(90, 100, 130, 0.12), transparent 50%),
+      linear-gradient(180deg, #3a3028 0%, #1d1f26 45%, #0c0e12 100%);
+  }
+
+  .ph--mono {
+    background:
+      radial-gradient(ellipse at 30% 30%, rgba(255, 255, 255, 0.12), transparent 50%),
+      linear-gradient(160deg, #3a3a3a 0%, #1e1e1e 55%, #0f0f0f 100%);
+  }
+
+  .ph--img {
+    object-fit: cover;
   }
 
   .ph__grain {
     position: absolute;
     inset: 0;
     opacity: 0.35;
-    background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.03) 50%, transparent 60%);
+    background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.04) 50%, transparent 60%);
   }
 </style>

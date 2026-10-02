@@ -1,0 +1,141 @@
+---
+// Documentary-style people scenes (stand-ins until event photography arrives).
+import { person, ridge, rng, twinkle, uid, type Pose } from "../../scenes/draw";
+import type { PeopleVariant } from "../../scenes/types";
+
+interface Props {
+  variant: PeopleVariant;
+  seed?: number;
+}
+
+const { variant, seed = 5 } = Astro.props;
+const r = rng(seed);
+const id = uid(variant);
+
+const outdoor = ["film", "prayer", "declare", "land"].includes(variant);
+const mono = variant === "queue" || variant === "portrait";
+
+const palette = mono
+  ? { top: "#2b2b2b", mid: "#5a5856", hor: "#a9a6a0", fig: "#121212", fig2: "#2a2a2a" }
+  : variant === "hall"
+    ? { top: "#0b0716", mid: "#2a1340", hor: "#7a3f8c", fig: "#09060c", fig2: "#1c1424" }
+    : outdoor
+      ? { top: "#1c2030", mid: "#5b4540", hor: "#e7a466", fig: "#0b0b0c", fig2: "#1f1a18" }
+      : { top: "#1d1712", mid: "#4a3626", hor: "#c48a52", fig: "#0e0b09", fig2: "#2a2018" };
+
+type Fig = { x: number; y: number; h: number; pose: Pose; flip: boolean; far?: boolean };
+const figs: Fig[] = [];
+
+if (variant === "queue") {
+  // Two lines of people receding toward a vanishing point on the right.
+  const vx = 1180, vy = 520;
+  for (const front of [260, 640]) {
+    for (let i = 0; i < 30; i++) {
+      const k = Math.pow(0.89, i);
+      figs.push({ x: vx + (front - vx) * k + (r() - 0.5) * 16 * k, y: vy + (1000 - vy) * k, h: 470 * k, pose: "stand", flip: r() > 0.5 });
+    }
+  }
+  figs.sort((a, b) => a.y - b.y);
+} else if (variant === "giving" || variant === "greeting") {
+  for (let i = 0; i < 22; i++) figs.push({ x: r() * 1600, y: 640 + r() * 40, h: 160 + r() * 50, pose: "stand", flip: r() > 0.5, far: true });
+  figs.push({ x: 560, y: 980, h: 560, pose: "reach", flip: false });
+  figs.push({ x: 1040, y: 990, h: 580, pose: variant === "greeting" ? "reach" : "stand", flip: true });
+} else if (variant === "hall" || variant === "worship") {
+  for (let row = 0; row < 4; row++)
+    for (let i = 0; i < 13; i++) {
+      const h = 190 + row * 90;
+      figs.push({ x: i * 128 + (row % 2) * 60 + (r() - 0.5) * 40, y: 660 + row * 90, h, pose: r() > (variant === "worship" ? 0.45 : 0.8) ? "raise" : "stand", flip: r() > 0.5 });
+    }
+} else if (variant === "prayer") {
+  for (let i = 0; i < 13; i++) figs.push({ x: 160 + i * 88 + (r() - 0.5) * 20, y: 860 + (r() - 0.5) * 20, h: 300 + r() * 40, pose: "bow", flip: r() > 0.5 });
+  figs.push({ x: 1340, y: 900, h: 520, pose: "raise", flip: false });
+} else if (variant === "declare") {
+  for (let i = 0; i < 9; i++) figs.push({ x: 200 + i * 110, y: 880, h: 320 + r() * 30, pose: "bow", flip: r() > 0.5 });
+  figs.push({ x: 1180, y: 940, h: 640, pose: "raise", flip: false });
+} else if (variant === "land") {
+  for (let i = 0; i < 7; i++) figs.push({ x: 520 + i * 60, y: 760, h: 90, pose: "bow", flip: r() > 0.5 });
+} else if (variant === "portrait") {
+  for (let i = 0; i < 40; i++) figs.push({ x: r() * 1600, y: 720 + r() * 120, h: 200 + r() * 60, pose: r() > 0.6 ? "raise" : "stand", flip: r() > 0.5, far: true });
+  figs.push({ x: 560, y: 1080, h: 1000, pose: "raise", flip: false });
+} else if (variant === "film") {
+  figs.push({ x: 560, y: 1060, h: 900, pose: "stand", flip: false });
+}
+
+const bokeh = Array.from({ length: outdoor ? 0 : 26 }, () => ({ x: r() * 1600, y: r() * 520, r: 10 + r() * 34, t: twinkle(r) }));
+const beams = variant === "hall" || variant === "worship" ? [180, 520, 1080, 1420] : [];
+---
+
+<svg class:list={["scene__svg", { "scene__svg--mono": mono }]} viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id={`${id}-sky`} x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color={palette.top} />
+      <stop offset="0.55" stop-color={palette.mid} />
+      <stop offset="0.8" stop-color={palette.hor} />
+    </linearGradient>
+    <radialGradient id={`${id}-sun`}>
+      <stop offset="0" stop-color="#fff0c9" stop-opacity="0.9" />
+      <stop offset="0.25" stop-color="#f0b06a" stop-opacity="0.4" />
+      <stop offset="1" stop-color="#f0b06a" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id={`${id}-beam`} x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color={variant === "hall" ? "#d6a3ff" : "#fff0c8"} stop-opacity="0.55" />
+      <stop offset="1" stop-color={variant === "hall" ? "#d6a3ff" : "#fff0c8"} stop-opacity="0" />
+    </linearGradient>
+    <filter id={`${id}-blur`} x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8" /></filter>
+    <filter id={`${id}-far`}><feGaussianBlur stdDeviation="3" /></filter>
+  </defs>
+
+  <g data-depth="0"><rect x="-100" y="-200" width="1800" height="1300" fill={`url(#${id}-sky)`} /></g>
+
+  {outdoor && (
+    <>
+      <g data-depth="0.08"><circle class="pulse" cx={variant === "film" ? 1080 : 1150} cy="560" r="420" fill={`url(#${id}-sun)`} /></g>
+      <g data-depth="0.16"><path d={ridge(r, -100, 1700, 600, 110, 8)} fill="#3b3338" opacity="0.85" /></g>
+      <g data-depth="0.26"><path d={ridge(r, -100, 1700, 680, 70, 12)} fill="#262328" /></g>
+      {variant === "film" && (
+        <g data-depth="0.34">
+          <path d="M760,700 C860,660 900,560 960,548 C1020,560 1060,660 1160,700 Z" fill="#1c1d1f" />
+          <g class="glow"><rect x="957" y="512" width="5" height="38" fill="#fff4dc" /><rect x="948" y="522" width="23" height="5" fill="#fff4dc" /></g>
+          {Array.from({ length: 30 }, () => <circle class="twinkle" cx={720 + r() * 600} cy={690 + r() * 60} r="1.6" fill="#ffd690" style={twinkle(r)} />)}
+        </g>
+      )}
+      <g data-depth="0.4"><path d={ridge(r, -100, 1700, 760, 40, 14)} fill="#17171a" /></g>
+    </>
+  )}
+
+  {!outdoor && (
+    <g data-depth="0.06" filter={`url(#${id}-blur)`}>
+      {bokeh.map((b) => <circle class="twinkle twinkle--soft" cx={b.x} cy={b.y} r={b.r} fill={mono ? "#d9d6d0" : variant === "hall" ? "#c48bff" : "#ffd28c"} opacity="0.35" style={b.t} />)}
+    </g>
+  )}
+
+  {beams.length > 0 && (
+    <g data-depth="0.12">
+      {beams.map((x, i) => <polygon class="beam" points={`${x - 10},-40 ${x + 10},-40 ${x + (i % 2 ? -260 : 260)},900 ${x + (i % 2 ? -420 : 420)},900`} fill={`url(#${id}-beam)`} />)}
+    </g>
+  )}
+
+  {(variant === "giving" || variant === "greeting") && (
+    <g data-depth="0.3"><rect x="-100" y="640" width="1800" height="460" fill="#130f0c" opacity="0.6" /></g>
+  )}
+
+  <g data-depth="0.35" filter={`url(#${id}-far)`} fill={palette.fig2}>
+    {figs.filter((f) => f.far).map((f, i) => <path d={person(f.x, f.y, f.h, f.pose, f.flip, i % 5 < 2)} />)}
+  </g>
+
+  {variant === "giving" && (
+    <g data-depth="0.6">
+      <rect x="560" y="730" width="480" height="24" fill="#d8c7a8" />
+      <rect x="580" y="754" width="440" height="200" fill="#2c241c" />
+      <rect x="760" y="700" width="70" height="32" fill="#c9a45c" class="glow" />
+    </g>
+  )}
+
+  <g data-depth="0.7" fill={palette.fig}>
+    {figs.filter((f) => !f.far).map((f, i) => <path d={person(f.x, f.y, f.h, f.pose, f.flip, f.h < 450 && i % 5 < 2)} />)}
+  </g>
+
+  {variant === "film" && (
+    <g data-depth="0.75"><path d="M-100,1000 L-100,900 C300,880 900,900 1700,860 L1700,1000 Z" fill="#0b0b0c" /></g>
+  )}
+</svg>

@@ -1,0 +1,164 @@
+﻿---
+// Illustrated aerial of Miracle Dome City. Landmarks sit under the Explore hotspots:
+// Facility ~20%, Carmel Hill ~52%, Zion Grounds ~68%, Car Park ~86%.
+import { rng, ridge, twinkle, uid } from "../../scenes/draw";
+
+interface Props {
+  mood?: "sunset" | "night";
+  seed?: number;
+}
+
+const { mood = "sunset", seed = 7 } = Astro.props;
+const r = rng(seed);
+const id = uid("aerial");
+const night = mood === "night";
+
+const c = night
+  ? { top: "#080b14", mid: "#1a2238", hor: "#7d5030", far: "#1f2433", near: "#161a25", hill: "#12161b", g1: "#171a18", g2: "#08090b" }
+  : { top: "#151a26", mid: "#433630", hor: "#e39a58", far: "#3b3438", near: "#25242a", hill: "#161a19", g1: "#1c1e1a", g2: "#0a0b0c" };
+
+const stars = night
+  ? Array.from({ length: 70 }, () => ({ x: r() * 1600, y: r() * 380, r: 0.6 + r() * 1.3, t: twinkle(r) }))
+  : [];
+
+// Crowd inside the Zion Grounds bowl.
+const ZX = 1088, ZY = 735, RX = 205, RY = 58;
+const crowd = Array.from({ length: 260 }, () => {
+  const a = r() * Math.PI * 2;
+  const d = Math.sqrt(r()) * 0.92;
+  return { x: ZX + Math.cos(a) * RX * d, y: ZY + Math.sin(a) * RY * d, hue: r() };
+});
+
+// Facility blocks with window grids.
+const blocks = [
+  { x: 205, y: 600, w: 130, h: 70 },
+  { x: 330, y: 615, w: 150, h: 62 },
+  { x: 250, y: 665, w: 190, h: 52 },
+];
+const windows = blocks.flatMap((b) => {
+  const out: { x: number; y: number; on: boolean; t: string }[] = [];
+  for (let wx = b.x + 8; wx < b.x + b.w - 8; wx += 11)
+    for (let wy = b.y + 8; wy < b.y + b.h - 6; wy += 10) out.push({ x: wx, y: wy, on: r() > 0.3, t: twinkle(r) });
+  return out;
+});
+
+const cars = Array.from({ length: 80 }, (_, i) => ({
+  x: 1300 + (i % 16) * 11 + (Math.floor(i / 16) % 2) * 4,
+  y: 748 + Math.floor(i / 16) * 13,
+  shade: ["#3a3d44", "#55504a", "#2c2f35", "#6b5f50"][Math.floor(r() * 4)],
+}));
+
+const groundLights = Array.from({ length: 90 }, () => ({ x: r() * 1600, y: 640 + r() * 230, r: 0.8 + r() * 1.6, t: twinkle(r) }));
+const hillLights = Array.from({ length: 9 }, (_, i) => ({ x: 832 + Math.sin(i * 1.3) * (90 - i * 9), y: 610 - i * 30, t: twinkle(r) }));
+const trees = Array.from({ length: 48 }, () => ({ x: r() * 1700 - 50, y: 870 + r() * 70, r: 28 + r() * 40 }));
+const hillTrees = Array.from({ length: 40 }, () => {
+  const t = r();
+  return { x: 600 + t * 470, y: 470 + Math.abs(t - 0.5) * 300 + r() * 120, r: 9 + r() * 12 };
+});
+---
+
+<svg class="scene__svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id={`${id}-sky`} x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color={c.top} />
+      <stop offset="0.45" stop-color={c.mid} />
+      <stop offset="0.66" stop-color={c.hor} />
+      <stop offset="0.75" stop-color={c.mid} />
+    </linearGradient>
+    <radialGradient id={`${id}-sun`}>
+      <stop offset="0" stop-color="#fff1c9" stop-opacity="0.95" />
+      <stop offset="0.12" stop-color="#ffcf7d" stop-opacity="0.7" />
+      <stop offset="0.45" stop-color="#e39a58" stop-opacity="0.18" />
+      <stop offset="1" stop-color="#e39a58" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id={`${id}-ground`} x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color={c.g1} />
+      <stop offset="1" stop-color={c.g2} />
+    </linearGradient>
+    <radialGradient id={`${id}-bowl`}>
+      <stop offset="0" stop-color="#ffd690" stop-opacity="0.95" />
+      <stop offset="0.55" stop-color="#b9783c" stop-opacity="0.7" />
+      <stop offset="1" stop-color="#3a2a1a" stop-opacity="0.9" />
+    </radialGradient>
+    <linearGradient id={`${id}-beam`} x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#fff0c4" stop-opacity="0.55" />
+      <stop offset="1" stop-color="#fff0c4" stop-opacity="0" />
+    </linearGradient>
+    <filter id={`${id}-blur`} x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="18" /></filter>
+    <filter id={`${id}-glow`} x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="6" /></filter>
+  </defs>
+
+  <g data-depth="0"><rect x="-100" y="-200" width="1800" height="1300" fill={`url(#${id}-sky)`} /></g>
+
+  {stars.length > 0 && (
+    <g data-depth="0.04">
+      {stars.map((s) => <circle class="twinkle" cx={s.x} cy={s.y} r={s.r} fill="#f4f1ec" style={s.t} />)}
+    </g>
+  )}
+
+  <g data-depth="0.08">
+    <circle class="pulse" cx="1180" cy={night ? 560 : 520} r={night ? 260 : 420} fill={`url(#${id}-sun)`} opacity={night ? 0.35 : 1} />
+    {!night && <circle cx="1180" cy="520" r="34" fill="#fff3d6" />}
+  </g>
+
+  <g data-depth="0.12" filter={`url(#${id}-blur)`} opacity={night ? 0.25 : 0.55}>
+    <ellipse class="drift" cx="300" cy="230" rx="260" ry="34" fill="#c99a78" />
+    <ellipse class="drift drift--slow" cx="1350" cy="300" rx="320" ry="30" fill="#d7a679" />
+    <ellipse class="drift" cx="820" cy="150" rx="220" ry="22" fill="#9a7f78" />
+  </g>
+
+  <g data-depth="0.18"><path d={ridge(r, -100, 1700, 560, 110, 9)} fill={c.far} opacity="0.9" /></g>
+  <g data-depth="0.26"><path d={ridge(r, -100, 1700, 610, 60, 12)} fill={c.near} /></g>
+
+  <!-- Carmel Hill with the cross -->
+  <g data-depth="0.36">
+    <path d="M520,660 C640,590 700,390 832,352 C964,390 1030,590 1160,660 Z" fill={c.hill} />
+    {hillTrees.map((t) => <circle cx={t.x} cy={t.y} r={t.r} fill="#0f1312" opacity="0.9" />)}
+    <path d="M832,640 C760,610 900,580 830,550 C760,520 900,490 832,460 C780,440 870,410 832,380" fill="none" stroke="#e4c57a" stroke-width="1.6" stroke-dasharray="3 7" opacity="0.6" />
+    {hillLights.map((l) => <circle class="twinkle" cx={l.x} cy={l.y} r="2.2" fill="#ffe2a6" style={l.t} />)}
+    <g class="glow">
+      <circle cx="832" cy="305" r="46" fill="#ffe2a6" opacity="0.35" filter={`url(#${id}-glow)`} />
+      <rect x="829" y="262" width="6" height="92" fill="#fff4dc" />
+      <rect x="812" y="282" width="40" height="6" fill="#fff4dc" />
+    </g>
+  </g>
+
+  <g data-depth="0.48"><rect x="-100" y="640" width="1800" height="460" fill={`url(#${id}-ground)`} /></g>
+
+  <g data-depth="0.6">
+    <!-- Roads -->
+    <path d="M-50,820 C300,760 600,800 900,760 S1300,700 1650,740" fill="none" stroke="#c9a45c" stroke-width="2.4" opacity="0.35" />
+    <path d="M320,700 C420,760 700,790 880,770" fill="none" stroke="#c9a45c" stroke-width="1.6" opacity="0.3" />
+    <path d="M1290,760 C1220,790 1150,800 1100,800" fill="none" stroke="#c9a45c" stroke-width="1.6" opacity="0.3" />
+
+    <!-- 1,500-bed facility -->
+    {blocks.map((b) => (
+      <g>
+        <rect x={b.x} y={b.y - 10} width={b.w} height="10" fill="#2a2724" />
+        <rect x={b.x} y={b.y} width={b.w} height={b.h} fill="#1b1a19" stroke="#3b342b" />
+      </g>
+    ))}
+    {windows.map((w) => <rect class={w.on ? "twinkle twinkle--soft" : undefined} x={w.x} y={w.y} width="6" height="5" fill={w.on ? "#ffd690" : "#2b2a28"} style={w.on ? w.t : undefined} />)}
+
+    <!-- Zion Grounds -->
+    <ellipse cx={ZX} cy={ZY + 6} rx={RX + 52} ry={RY + 22} fill="#15130f" stroke="#c9a45c" stroke-width="2" opacity="0.95" />
+    <ellipse cx={ZX} cy={ZY} rx={RX + 10} ry={RY + 6} fill={`url(#${id}-bowl)`} />
+    {crowd.map((p) => <circle cx={p.x.toFixed(1)} cy={p.y.toFixed(1)} r="1.6" fill={p.hue > 0.7 ? "#fff0c8" : p.hue > 0.35 ? "#3a2614" : "#7a5230"} />)}
+    <ellipse cx={ZX} cy={ZY - 4} rx="20" ry="7" fill="#fff6dc" />
+    <polygon class="beam" points={`${ZX - 14},${ZY - 4} ${ZX + 14},${ZY - 4} ${ZX + 60},${ZY - 420} ${ZX - 60},${ZY - 420}`} fill={`url(#${id}-beam)`} />
+    {[0, 1, 2, 3, 4, 5].map((i) => {
+      const a = (i / 6) * Math.PI * 2;
+      return <circle class="twinkle" cx={ZX + Math.cos(a) * (RX + 46)} cy={ZY + 6 + Math.sin(a) * (RY + 18)} r="3" fill="#fff4dc" style={twinkle(r)} />;
+    })}
+
+    <!-- Large car park -->
+    {cars.map((car) => <rect x={car.x} y={car.y} width="8" height="5" rx="1" fill={car.shade} />)}
+    {[0, 1, 2, 3].map((i) => <circle class="twinkle" cx={1300 + i * 58} cy="742" r="2.4" fill="#ffe2a6" style={twinkle(r)} />)}
+
+    {groundLights.map((l) => <circle class="twinkle" cx={l.x} cy={l.y} r={l.r} fill="#ffd690" opacity="0.8" style={l.t} />)}
+  </g>
+
+  <g data-depth="0.85">
+    {trees.map((t) => <circle cx={t.x} cy={t.y} r={t.r} fill="#070809" />)}
+  </g>
+</svg>

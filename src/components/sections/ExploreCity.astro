@@ -1,136 +1,626 @@
 ---
 import Placeholder from "../Placeholder.astro";
+import { CITY_MODEL_URL, hotspots, media } from "../../data/site";
 
-const hotspots = [
-  { label: "1,500-Bed Facility", href: "#facility", x: "16%", y: "52%" },
-  { label: "Carmel Hill", href: "#carmel-hill", x: "46%", y: "30%" },
-  { label: "Zion Grounds", href: "#zion-grounds", x: "60%", y: "54%" },
-  { label: "Large Car Park", href: "#city-numbers", x: "82%", y: "62%" },
-];
+// Keep info cards on-screen: flip horizontally near the edges, drop below near the top.
+const spots = hotspots.map((spot) => ({
+  ...spot,
+  alignRight: parseFloat(spot.x) > 70,
+  alignLeft: parseFloat(spot.x) < 25,
+  below: parseFloat(spot.y) < 45,
+  // Matches the scene layer the landmark is drawn on, so markers move with it.
+  depth: spot.id === "carmel" ? 0.36 : 0.6,
+  photo: spot.image ? media[spot.image] : "",
+}));
+const city3d = { modelUrl: CITY_MODEL_URL, spots: hotspots.map(({ id, anchor }) => ({ id, anchor })) };
 ---
 
-<section class="explore" id="explore">
-  <div class="explore__intro container reveal">
-    <h2 class="display">Explore Miracle Dome City</h2>
-    <p class="explore__sub">A masterplan for generations</p>
-  </div>
+<section class="explore band" id="explore" data-explore>
+  <!-- Scene and hotspots share one 16:9 stage so markers stay on their landmarks at any size. -->
+  <div class="explore__viewport" data-explore-viewport>
+    <div class="explore__stage">
+      <Placeholder label="Masterplan aerial of Miracle Dome City" ratio="auto" class="explore__ph" src={media.explore || undefined} scene="aerial" seed={21} />
+      <!-- The interactive 3D city mounts here once it has loaded. -->
+      <div class="explore__3d" data-city3d data-config={JSON.stringify(city3d)} aria-label="Interactive 3D map of Miracle Dome City" role="img"></div>
+      <div class="explore__shade" aria-hidden="true"></div>
 
-  <div class="explore__map container-wide reveal">
-    <div class="explore__canvas">
-      <Placeholder label="Masterplan aerial" ratio="auto" class="explore__ph" />
-      {
-        hotspots.map((spot) => (
-          <a class="hotspot" href={spot.href} style={`left:${spot.x}; top:${spot.y};`}>
-            <span class="hotspot__ring" aria-hidden="true"></span>
+      <div class="explore__map" data-hotspots>
+        {
+          spots.map((spot) => (
+            <div
+              class:list={[
+                "hotspot",
+                { "hotspot--right": spot.alignRight, "hotspot--left": spot.alignLeft, "hotspot--below": spot.below },
+              ]}
+              style={`left:${spot.x}; top:${spot.y};`}
+              data-hotspot={spot.id}
+              data-card={"card" in spot ? spot.card : undefined}
+              data-follow-depth={spot.depth}
+            >
+          <button
+            class="hotspot__trigger"
+            type="button"
+            aria-expanded="false"
+            aria-controls={`hotspot-${spot.id}`}
+          >
             <span class="hotspot__label">{spot.label}</span>
-          </a>
-        ))
-      }
-      <div class="explore__cta">
-        <a class="btn" href="#destinations">Click to explore <span aria-hidden="true">→</span></a>
+            <span class="play-icon hotspot__icon" aria-hidden="true" />
+          </button>
+          <div class="hotspot__card" id={`hotspot-${spot.id}`} role="region" aria-label={spot.label}>
+            {spot.photo && <img class="hotspot__photo" src={spot.photo} alt="" loading="lazy" />}
+            <p class="hotspot__fact">{spot.fact}</p>
+            <p class="hotspot__title">{spot.label}</p>
+            <p class="hotspot__text">{spot.text}</p>
+            <a class="text-link hotspot__link" href={spot.href}>
+              Discover <span aria-hidden="true">→</span>
+            </a>
+          </div>
+            </div>
+          ))
+        }
       </div>
     </div>
+  </div>
+
+  <div class="explore__intro container reveal">
+    <p class="eyebrow">Explore</p>
+    <h2 class="display">Miracle Dome City</h2>
+    <p class="tagline explore__sub">A Masterplan for Generations</p>
+    <p class="explore__hint">
+      <span class="explore__hint-hover">Hover a point to explore</span>
+      <span class="explore__hint-tap">Tap a point · drag to look around</span>
+      <span class="explore__hint-3d explore__hint-3d--mouse">Drag to rotate · hover a building · click to fly in</span>
+      <span class="explore__hint-3d explore__hint-3d--touch">Two fingers to rotate &amp; zoom · tap a point</span>
+    </p>
+  </div>
+
+  <div class="explore__controls" aria-label="3D map controls">
+    <button type="button" data-city-zoom="in" aria-label="Zoom in">+</button>
+    <button type="button" data-city-zoom="out" aria-label="Zoom out">−</button>
+    <button type="button" data-city-reset aria-label="Reset view">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5" /></svg>
+    </button>
+  </div>
+
+  <div class="explore__cta">
+    <a class="btn" href="#zion-grounds">Click to explore <span aria-hidden="true">→</span></a>
   </div>
 </section>
 
 <style>
   .explore {
-    padding-block: var(--space-xl) var(--space-2xl);
-    background: linear-gradient(180deg, var(--color-charcoal), var(--color-charcoal-soft));
+    position: relative;
+    height: clamp(560px, 62vw, 820px);
+    overflow: hidden;
+    container-type: size;
+  }
+
+  .explore__viewport {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  /* Behaves like `object-fit: cover` for the scene + markers together. */
+  /* No transform here: it would trap the hotspot cards under the intro text. */
+  .explore__stage {
+    --stage-w: max(100cqw, calc(100cqh * 16 / 9));
+    position: absolute;
+    left: calc((100cqw - var(--stage-w)) / 2);
+    top: calc((100cqh - var(--stage-w) * 9 / 16) / 2);
+    width: var(--stage-w);
+    aspect-ratio: 16 / 9;
+  }
+
+  .explore__stage :global(.explore__ph) {
+    position: absolute;
+    inset: 0;
+    min-height: 0;
+    aspect-ratio: auto;
+  }
+
+  .explore__shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(12, 14, 18, 0.8) 0%, rgba(12, 14, 18, 0.2) 34%, transparent 60%, rgba(12, 14, 18, 0.55) 100%);
+    pointer-events: none;
+  }
+
+  /* ---------- 3D mode ---------- */
+  .explore__3d {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 1.2s var(--ease-out);
+  }
+
+  .explore__3d :global(.city3d__canvas) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .explore.is-3d .explore__3d {
+    opacity: 1;
+  }
+
+  /* The 3D view fills the section exactly; markers are positioned in px by the script. */
+  .explore.is-3d .explore__viewport {
+    overflow: hidden;
+  }
+
+  .explore.is-3d .explore__stage {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    height: auto;
+    aspect-ratio: auto;
+  }
+
+  .explore.is-3d .explore__stage :global(.explore__ph) {
+    visibility: hidden;
+  }
+
+  .explore.is-3d .explore__shade {
+    background: linear-gradient(180deg, rgba(12, 14, 18, 0.7) 0%, rgba(12, 14, 18, 0.1) 28%, transparent 70%, rgba(12, 14, 18, 0.45) 100%);
+  }
+
+  .explore.is-3d .hotspot {
+    transition: opacity 0.3s var(--ease-out);
+  }
+
+  .explore.is-3d .hotspot.is-hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .explore__hint-3d,
+  .explore.is-3d .explore__hint-hover,
+  .explore.is-3d .explore__hint-tap {
+    display: none;
+  }
+
+  .explore.is-3d .explore__hint-3d--mouse { display: inline; }
+
+  @media (hover: none) {
+    .explore.is-3d .explore__hint-3d--mouse { display: none; }
+    .explore.is-3d .explore__hint-3d--touch { display: inline; }
+  }
+
+  .explore__controls {
+    position: absolute;
+    right: clamp(1rem, 3vw, 2rem);
+    bottom: 1.6rem;
+    z-index: 4;
+    display: none;
+    gap: 0.4rem;
+  }
+
+  .explore.is-3d .explore__controls {
+    display: flex;
+  }
+
+  .explore__controls button {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid var(--color-line);
+    border-radius: 50%;
+    background: rgba(12, 14, 18, 0.7);
+    backdrop-filter: blur(6px);
+    color: var(--color-white);
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: border-color 0.25s var(--ease-out), color 0.25s var(--ease-out);
+  }
+
+  /* Touch screens pinch to zoom, so only the reset button is needed. */
+  @media (hover: none) {
+    .explore__controls [data-city-zoom] {
+      display: none;
+    }
+  }
+
+  .explore__controls button:hover,
+  .explore__controls button:focus-visible {
+    border-color: var(--color-gold);
+    color: var(--color-gold-bright);
+    outline: none;
+  }
+
+  .hotspot__photo {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    margin-bottom: 0.75rem;
   }
 
   .explore__intro {
+    position: absolute;
+    top: var(--band-pad);
+    inset-inline: 0;
+    z-index: 2;
     text-align: center;
-    margin-bottom: var(--space-lg);
+    pointer-events: none;
+  }
+
+  .explore__intro .eyebrow {
+    color: var(--color-white);
+    letter-spacing: 0.4em;
   }
 
   .explore__intro .display {
     margin-inline: auto;
-    max-width: 16ch;
+    max-width: none;
   }
 
   .explore__sub {
-    margin-top: 0.75rem;
-    color: var(--color-gold);
-    font-size: 0.78rem;
-    letter-spacing: 0.24em;
+    margin-top: 0.6rem;
+    font-size: 0.7rem;
+  }
+
+  .explore__hint {
+    margin-top: 0.9rem;
+    color: var(--color-stone);
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
   }
 
-  .explore__canvas {
-    position: relative;
-    min-height: clamp(380px, 54vw, 640px);
-    overflow: hidden;
+  .explore__hint-tap { display: none; }
+
+  @media (hover: none) {
+    .explore__hint-hover { display: none; }
+    .explore__hint-tap { display: inline; }
   }
 
-  .explore__canvas :global(.explore__ph) {
-    min-height: inherit;
-    height: 100%;
-    aspect-ratio: auto;
-  }
-
-  .explore__canvas::after {
-    content: "";
+  .explore__map {
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, rgba(12, 14, 18, 0.12), rgba(12, 14, 18, 0.55));
-    pointer-events: none;
+    pointer-events: none; /* let drags reach the 3D canvas */
+  }
+
+  /* Markers sit above the intro text; cards may overlap it. */
+  .hotspot {
+    z-index: 3;
+    pointer-events: auto;
   }
 
   .hotspot {
     position: absolute;
-    z-index: 2;
     transform: translate(-50%, -50%);
-    display: grid;
-    justify-items: center;
-    gap: 0.55rem;
   }
 
-  .hotspot__ring {
-    width: 1.35rem;
-    height: 1.35rem;
-    border: 1px solid var(--color-gold-bright);
-    border-radius: 50%;
-    background: rgba(201, 164, 92, 0.25);
-    animation: pulse 2.6s ease-out infinite;
+  .hotspot.is-open {
+    z-index: 5;
+  }
+
+  .hotspot__trigger {
+    display: grid;
+    justify-items: center;
+    gap: 0.6rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-white);
+    cursor: pointer;
   }
 
   .hotspot__label {
-    padding: 0.45rem 0.7rem;
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    padding: 0.4rem 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
     background: rgba(12, 14, 18, 0.82);
-    color: var(--color-white);
-    font-size: 0.62rem;
-    letter-spacing: 0.14em;
+    font-family: var(--font-display);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     white-space: nowrap;
+    transition: border-color 0.3s var(--ease-out), color 0.3s var(--ease-out);
   }
 
-  .hotspot:hover .hotspot__label { border-color: var(--color-gold); }
+  .hotspot__icon {
+    border-color: var(--color-white);
+    color: var(--color-white);
+    animation: pulse 2.6s ease-out infinite;
+  }
+
+  .hotspot.is-open .hotspot__label,
+  .hotspot__trigger:focus-visible .hotspot__label {
+    border-color: var(--color-gold);
+    color: var(--color-gold-bright);
+  }
+
+  .hotspot.is-open .hotspot__icon {
+    transform: scale(1.12);
+    border-color: var(--color-gold-bright);
+    color: var(--color-gold-bright);
+    background: rgba(201, 164, 92, 0.3);
+  }
+
+  .hotspot__trigger:focus-visible {
+    outline: none;
+  }
+
+  .hotspot__card {
+    position: absolute;
+    bottom: calc(100% + 0.75rem);
+    left: 50%;
+    width: 15rem;
+    padding: 1rem 1.1rem 1.1rem;
+    border: 1px solid var(--color-line);
+    border-top: 2px solid var(--color-gold);
+    background: rgba(10, 12, 16, 0.94);
+    backdrop-filter: blur(8px);
+    text-align: left;
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, 8px);
+    transition:
+      opacity 0.3s var(--ease-out),
+      transform 0.3s var(--ease-out),
+      visibility 0.3s;
+  }
+
+  .hotspot--below .hotspot__card {
+    top: calc(100% + 0.75rem);
+    bottom: auto;
+    transform: translate(-50%, -8px);
+  }
+
+  .hotspot--right .hotspot__card {
+    left: auto;
+    right: 0;
+    transform: translate(0, 8px);
+  }
+
+  .hotspot--left .hotspot__card {
+    left: 0;
+    transform: translate(0, 8px);
+  }
+
+  .hotspot.is-open .hotspot__card {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+  }
+
+  .hotspot--right.is-open .hotspot__card,
+  .hotspot--left.is-open .hotspot__card {
+    transform: translate(0, 0);
+  }
+
+  .hotspot__fact {
+    color: var(--color-gold-bright);
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .hotspot__title {
+    margin-top: 0.15rem;
+    color: var(--color-stone);
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .hotspot__text {
+    margin-top: 0.6rem;
+    color: var(--color-muted);
+    font-size: 0.82rem;
+    line-height: 1.55;
+  }
+
+  .hotspot__link {
+    margin-top: 0.8rem;
+  }
 
   .explore__cta {
     position: absolute;
-    left: 50%;
-    bottom: 1.4rem;
+    left: 0;
+    right: 0;
+    bottom: 1.6rem;
     z-index: 2;
-    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .explore__cta .btn {
+    pointer-events: auto;
   }
 
   @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(201, 164, 92, 0.45); }
-    70% { box-shadow: 0 0 0 14px rgba(201, 164, 92, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(201, 164, 92, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(228, 197, 122, 0.5); }
+    70% { box-shadow: 0 0 0 14px rgba(228, 197, 122, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(228, 197, 122, 0); }
   }
 
   @media (max-width: 720px) {
+    .explore__controls {
+      right: 0.75rem;
+    }
+
+    /* Phones: keep the full masterplan and let people drag sideways to look around. */
+    .explore__viewport {
+      overflow-x: auto;
+      overflow-y: hidden;
+      overscroll-behavior-x: contain;
+      scrollbar-width: none;
+    }
+
+    .explore__viewport::-webkit-scrollbar { display: none; }
+
+    .explore__stage {
+      position: relative;
+      left: auto;
+      top: auto;
+      width: calc(100cqh * 16 / 9);
+      height: 100%;
+    }
+
+    /* Labels crowd each other on phones: show markers only; the card names the place. */
     .hotspot__label {
-      max-width: 9rem;
-      white-space: normal;
-      text-align: center;
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .hotspot__icon {
+      width: 2.6rem;
+      height: 2.6rem;
+    }
+
+    .hotspot__card {
+      width: min(14rem, 66vw);
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .hotspot__ring { animation: none; }
+    .hotspot__icon { animation: none; }
+    .hotspot__card { transition: none; }
   }
 </style>
+
+<script>
+  const map = document.querySelector<HTMLElement>("[data-hotspots]");
+  const spots = Array.from(map?.querySelectorAll<HTMLElement>("[data-hotspot]") ?? []);
+  let lastPointer = "mouse";
+
+  const setOpen = (spot: HTMLElement, open: boolean) => {
+    spot.classList.toggle("is-open", open);
+    spot.querySelector("button")?.setAttribute("aria-expanded", String(open));
+  };
+
+  const openOnly = (target: HTMLElement | null) => {
+    spots.forEach((spot) => setOpen(spot, spot === target));
+  };
+
+  spots.forEach((spot) => {
+    const trigger = spot.querySelector<HTMLButtonElement>("button");
+
+    // Desktop: hover to explore.
+    spot.addEventListener("pointerenter", (event) => {
+      if (event.pointerType === "mouse") openOnly(spot);
+    });
+    spot.addEventListener("pointerleave", (event) => {
+      if (event.pointerType === "mouse") setOpen(spot, false);
+    });
+
+    // Mobile: tap to explore (tap again to close). Keyboard: Enter/Space toggles.
+    trigger?.addEventListener("pointerdown", (event) => {
+      lastPointer = event.pointerType;
+    });
+    trigger?.addEventListener("keydown", () => {
+      lastPointer = "keyboard";
+    });
+    trigger?.addEventListener("click", () => {
+      const isOpen = spot.classList.contains("is-open");
+      if (lastPointer === "mouse" && isOpen) return;
+      openOnly(isOpen ? null : spot);
+    });
+
+    spot.addEventListener("focusout", (event) => {
+      if (!spot.contains(event.relatedTarget as Node | null)) setOpen(spot, false);
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!(event.target as HTMLElement).closest("[data-hotspot]")) openOnly(null);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") openOnly(null);
+  });
+
+  // Phones: start the draggable masterplan centred.
+  const viewport = document.querySelector<HTMLElement>("[data-explore-viewport]");
+  const centre = () => {
+    if (viewport && viewport.scrollWidth > viewport.clientWidth) {
+      viewport.scrollLeft = (viewport.scrollWidth - viewport.clientWidth) / 2;
+    }
+  };
+  centre();
+  window.matchMedia("(max-width: 720px)").addEventListener("change", centre);
+
+  // ---------- Interactive 3D city (progressive enhancement) ----------
+  const section = document.querySelector<HTMLElement>("[data-explore]");
+  const mount = section?.querySelector<HTMLElement>("[data-city3d]");
+
+  async function start3D() {
+    if (!section || !mount) return;
+    const { createCity3D, webglAvailable } = await import("../../scripts/city3d");
+    if (!webglAvailable()) return;
+
+    const config = JSON.parse(mount.dataset.config ?? "{}");
+    const markers = new Map(spots.map((spot) => [spot.dataset.hotspot ?? "", spot]));
+    const byId = (id: string | null) => (id ? (markers.get(id) ?? null) : null);
+    let hoverOpened: HTMLElement | null = null;
+    let city: Awaited<ReturnType<typeof createCity3D>> | null = null;
+
+    city = await createCity3D({
+      container: mount,
+      spots: config.spots,
+      markers,
+      modelUrl: config.modelUrl || undefined,
+      reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      // Hovering a building shows its card; moving away closes it again.
+      onHover: (id) => {
+        const spot = byId(id);
+        if (spot) {
+          openOnly(spot);
+          hoverOpened = spot;
+        } else if (hoverOpened) {
+          setOpen(hoverOpened, false);
+          hoverOpened = null;
+        }
+        city?.highlight(id);
+      },
+      onSelect: (id) => {
+        openOnly(byId(id));
+        hoverOpened = null;
+        city?.focus(id);
+      },
+    });
+    const ready = city;
+
+    // Markers now follow the 3D landmarks instead of the flat illustration.
+    spots.forEach((spot) => {
+      delete spot.dataset.followDepth;
+      spot.style.translate = "";
+      spot.querySelector("button")?.addEventListener("click", () => {
+        if (spot.classList.contains("is-open")) ready.focus(spot.dataset.hotspot ?? "");
+      });
+      spot.addEventListener("pointerenter", () => ready.highlight(spot.dataset.hotspot ?? null));
+      spot.addEventListener("pointerleave", () => ready.highlight(null));
+    });
+
+    section.querySelector("[data-city-zoom='in']")?.addEventListener("click", () => ready.zoom(0.75));
+    section.querySelector("[data-city-zoom='out']")?.addEventListener("click", () => ready.zoom(1.33));
+    section.querySelector("[data-city-reset]")?.addEventListener("click", () => {
+      openOnly(null);
+      ready.reset();
+    });
+
+    requestAnimationFrame(() => section.classList.add("is-3d"));
+  }
+
+  // Only download the 3D code when the visitor gets close to the section.
+  if (section && mount && "IntersectionObserver" in window) {
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        io.disconnect();
+        start3D().catch((err) => console.warn("3D map unavailable; showing the illustration.", err));
+      },
+      { rootMargin: "600px 0px" },
+    );
+    io.observe(section);
+  }
+</script>

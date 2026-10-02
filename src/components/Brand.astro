@@ -1,0 +1,70 @@
+---
+interface Props {
+  /** "mark": MDC monogram + text wordmark (header). "full": complete official logo (footer). */
+  variant?: "mark" | "full";
+}
+
+const { variant = "mark" } = Astro.props;
+---
+
+<a class:list={["brand", `brand--${variant}`]} href="#top" aria-label="Miracle Dome City — Home">
+  {
+    variant === "full" ? (
+      <img class="brand__logo" src="/images/mdc-logo-light.png" alt="Miracle Dome City — Where Heaven Meets Earth" width="640" height="450" loading="lazy" />
+    ) : (
+      <>
+        <img class="brand__mark" src="/images/mdc-mark-light.png" alt="" width="320" height="133" />
+        <span class="brand__text">
+          <span class="brand__name">Miracle Dome City</span>
+          <span class="brand__tag">Where Heaven Meets Earth</span>
+        </span>
+      </>
+    )
+  }
+</a>
+
+<style>
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--color-white);
+  }
+
+  .brand__mark {
+    width: auto;
+    height: 2.5rem;
+  }
+
+  .brand__logo {
+    width: clamp(8.5rem, 14vw, 11rem);
+    height: auto;
+  }
+
+  .brand__text {
+    display: grid;
+    padding-left: 0.75rem;
+    border-left: 1px solid var(--color-line);
+    line-height: 1.25;
+  }
+
+  .brand__name {
+    font-family: var(--font-display);
+    font-size: 0.92rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .brand__tag {
+    color: var(--color-gold);
+    font-size: 0.48rem;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 420px) {
+    .brand__mark { height: 1.8rem; }
+    .brand__name { font-size: 0.78rem; }
+    .brand__tag { font-size: 0.42rem; }
+  }
+</style>
