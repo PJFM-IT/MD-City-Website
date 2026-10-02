@@ -30,6 +30,10 @@ const canonical = "https://miracle-domecity.com";
     <meta property="og:description" content={description} />
     <meta property="og:site_name" content="Miracle Dome City" />
 
+    <meta property="og:image" content={new URL("/images/mdc-logo.jpg", canonical).href} />
+    <meta name="twitter:image" content={new URL("/images/mdc-logo.jpg", canonical).href} />
+    <meta name="theme-color" content="#0c0e12" />
+
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
@@ -39,7 +43,7 @@ const canonical = "https://miracle-domecity.com";
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap"
       rel="stylesheet"
     />
 
@@ -58,6 +62,12 @@ const canonical = "https://miracle-domecity.com";
   <body>
     <slot />
     <script>
+      import { parallax } from "../scripts/motion";
+      import { initScenes } from "../scripts/scenes";
+
+      parallax();
+      initScenes();
+
       const reveal = () => {
         const nodes = document.querySelectorAll(".reveal");
         if (!("IntersectionObserver" in window)) {

@@ -1,54 +1,60 @@
 ---
 import Placeholder from "../Placeholder.astro";
+import { media, prosperityGallery } from "../../data/site";
+
+const lead = { ...prosperityGallery[0], src: media.prosperity || prosperityGallery[0].src };
 ---
 
-<section class="prosperity" id="hour-of-prosperity">
-  <div class="prosperity__media" aria-hidden="true">
-    <Placeholder label="Hour of Prosperity" ratio="auto" class="prosperity__ph" />
+<section class="prosperity band" id="hour-of-prosperity">
+  <div class="band__media" aria-hidden="true" data-gallery-item="prosperity-0">
+    <div data-parallax="0.08">
+      <Placeholder label={lead.alt} src={lead.src || undefined} scene={lead.scene} ratio="auto" />
+    </div>
   </div>
-  <div class="prosperity__copy container reveal">
+  <div class="prosperity__copy container-wide reveal">
     <p class="eyebrow">The Hour of Prosperity</p>
     <h2 class="display">Faith on the land.</h2>
-    <p class="lede">
-      Partners gathered on the Miracle Dome City land in prayer — a quieter
-      moment of declaration over the vision that would rise upon it.
+    <p class="prosperity__text">
+      On the very land of Miracle Dome City, partners gathered together in
+      prayer. A moment of faith, declaration and prayer over the land and the
+      vision that would rise upon it.
     </p>
-    <a class="btn" href="#contact">View moments <span aria-hidden="true">→</span></a>
+    <button class="btn" type="button" data-lightbox="prosperity" data-index="0">
+      View moments <span aria-hidden="true">→</span>
+    </button>
   </div>
 </section>
 
 <style>
   .prosperity {
-    position: relative;
-    min-height: min(78vh, 720px);
+    min-height: min(62vh, 560px);
     display: grid;
-    align-items: end;
+    align-items: center;
     overflow: hidden;
-    padding-block: var(--space-2xl);
+    padding-block: var(--band-pad);
   }
 
-  .prosperity__media { position: absolute; inset: 0; }
-
-  .prosperity__media :global(.prosperity__ph) {
-    height: 100%;
-    min-height: 100%;
-    aspect-ratio: auto;
-  }
-
-  .prosperity__media::after {
+  .prosperity .band__media::after {
     content: "";
     position: absolute;
     inset: 0;
     background:
-      linear-gradient(90deg, rgba(12, 14, 18, 0.82) 0%, rgba(12, 14, 18, 0.45) 55%, rgba(12, 14, 18, 0.25) 100%),
-      linear-gradient(180deg, rgba(12, 14, 18, 0.2), rgba(12, 14, 18, 0.7));
+      linear-gradient(90deg, rgba(12, 14, 18, 0.9) 0%, rgba(12, 14, 18, 0.55) 38%, rgba(12, 14, 18, 0.05) 75%),
+      linear-gradient(180deg, transparent 60%, rgba(12, 14, 18, 0.5));
   }
 
   .prosperity__copy {
     position: relative;
     z-index: 1;
-    max-width: 34rem;
   }
 
-  .prosperity__copy .btn { margin-top: 1.5rem; }
+  .prosperity__text {
+    margin-top: 1rem;
+    max-width: 25rem;
+    color: var(--color-muted);
+    font-size: 0.86rem;
+    line-height: 1.65;
+  }
+
+  .prosperity__copy .btn { margin-top: 1.4rem; }
 </style>
