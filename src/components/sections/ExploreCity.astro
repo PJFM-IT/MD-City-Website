@@ -13,6 +13,18 @@ const spots = hotspots.map((spot) => ({
   photo: spot.image ? media[spot.image] : "",
 }));
 const city3d = { modelUrl: CITY_MODEL_URL, spots: hotspots.map(({ id, anchor }) => ({ id, anchor })) };
+
+// Real surroundings of the site in Katunayake (true compass directions, compressed distances).
+const places = [
+  { name: "Indian Ocean", dir: "W", pos: [-520, 6, -120] },
+  { name: "Negombo Lagoon", dir: "N", pos: [-150, 4, -270] },
+  { name: "Bandaranaike Int'l Airport", dir: "SW", pos: [-265, 12, 255] },
+  { name: "Free Trade Zone", dir: "", pos: [-240, 12, 80] },
+  { name: "Katunayake–Veyangoda Rd", dir: "NE", pos: [300, 6, -70] },
+  { name: "Minuwangoda · Veyangoda", dir: "NE", pos: [560, 14, -380] },
+  { name: "Colombo 32 km", dir: "S", pos: [-130, 6, 520] },
+  { name: "Central hills", dir: "E", pos: [640, 52, 40] },
+];
 ---
 
 <section class="explore band" id="explore" data-explore>
@@ -23,6 +35,17 @@ const city3d = { modelUrl: CITY_MODEL_URL, spots: hotspots.map(({ id, anchor }) 
       <!-- The interactive 3D city mounts here once it has loaded. -->
       <div class="explore__3d" data-city3d data-config={JSON.stringify(city3d)} aria-label="Interactive 3D map of Miracle Dome City" role="img"></div>
       <div class="explore__shade" aria-hidden="true"></div>
+
+      <div class="explore__places" aria-hidden="true">
+        {
+          places.map((place) => (
+            <span class="place" data-city-label={JSON.stringify(place.pos)}>
+              {place.dir && <span class="place__dir">{place.dir}</span>}
+              {place.name}
+            </span>
+          ))
+        }
+      </div>
 
       <div class="explore__map" data-hotspots>
         {
@@ -126,6 +149,31 @@ const city3d = { modelUrl: CITY_MODEL_URL, spots: hotspots.map(({ id, anchor }) 
     pointer-events: none;
   }
 
+  /* ---------- Before the 3D is ready ----------
+     Dark sunset backdrop only: the flat illustration and its markers appear solely as a
+     fallback (.is-fallback) when 3D isn't available. */
+  .explore__viewport {
+    background:
+      radial-gradient(ellipse at 60% 40%, rgba(232, 150, 90, 0.14), transparent 60%),
+      linear-gradient(180deg, #141826 0%, #0c0e12 80%);
+  }
+
+  .explore__stage :global(.explore__ph),
+  .explore__map {
+    visibility: hidden;
+  }
+
+  .explore.is-fallback .explore__stage :global(.explore__ph),
+  .explore.is-fallback .explore__map,
+  .explore.is-3d .explore__map {
+    visibility: visible;
+  }
+
+  .explore:not(.is-fallback) .explore__hint-hover,
+  .explore:not(.is-fallback) .explore__hint-tap {
+    display: none;
+  }
+
   /* ---------- 3D mode ---------- */
   .explore__3d {
     position: absolute;
@@ -145,8 +193,9 @@ const city3d = { modelUrl: CITY_MODEL_URL, spots: hotspots.map(({ id, anchor }) 
   }
 
   /* The 3D view fills the section exactly; markers are positioned in px by the script. */
+  /* `clip` (not `hidden`): off-screen place labels must never make the 3D view scrollable. */
   .explore.is-3d .explore__viewport {
-    overflow: hidden;
+    overflow: clip;
   }
 
   .explore.is-3d .explore__stage {
@@ -228,6 +277,52 @@ const city3d = { modelUrl: CITY_MODEL_URL, spots: hotspots.map(({ id, anchor }) 
     border-color: var(--color-gold);
     color: var(--color-gold-bright);
     outline: none;
+  }
+
+  /* Place names around the site (only in 3D mode). */
+  .explore__places {
+    position: absolute;
+    inset: 0;
+    display: none;
+    pointer-events: none;
+  }
+
+  .explore.is-3d .explore__places {
+    display: block;
+  }
+
+  .place {
+    position: absolute;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.2rem 0.5rem;
+    border-left: 1px solid var(--color-gold);
+    background: rgba(12, 14, 18, 0.45);
+    color: rgba(244, 241, 236, 0.82);
+    font-size: 0.56rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transform: translate(0, -100%);
+    transition: opacity 0.4s var(--ease-out);
+  }
+
+  .place__dir {
+    color: var(--color-gold-bright);
+    font-weight: 500;
+  }
+
+  .place.is-hidden {
+    opacity: 0;
+  }
+
+  @media (max-width: 720px) {
+    .place {
+      font-size: 0.5rem;
+      letter-spacing: 0.12em;
+    }
   }
 
   .hotspot__photo {
@@ -444,8 +539,8 @@ const city3d = { modelUrl: CITY_MODEL_URL, spots: hotspots.map(({ id, anchor }) 
       right: 0.75rem;
     }
 
-    /* Phones: keep the full masterplan and let people drag sideways to look around. */
-    .explore__viewport {
+    /* Phones, fallback illustration only: keep the full masterplan and let people drag sideways. */
+    .explore.is-fallback .explore__viewport {
       overflow-x: auto;
       overflow-y: hidden;
       overscroll-behavior-x: contain;
@@ -454,7 +549,7 @@ const city3d = { modelUrl: CITY_MODEL_URL, spots: hotspots.map(({ id, anchor }) 
 
     .explore__viewport::-webkit-scrollbar { display: none; }
 
-    .explore__stage {
+    .explore.is-fallback .explore__stage {
       position: relative;
       left: auto;
       top: auto;
@@ -553,10 +648,17 @@ const city3d = { modelUrl: CITY_MODEL_URL, spots: hotspots.map(({ id, anchor }) 
   const section = document.querySelector<HTMLElement>("[data-explore]");
   const mount = section?.querySelector<HTMLElement>("[data-city3d]");
 
+  // No 3D (unsupported, failed or too slow): show the flat illustrated map instead.
+  const fallback = () => {
+    if (!section || section.classList.contains("is-3d")) return;
+    section.classList.add("is-fallback");
+    centre();
+  };
+
   async function start3D() {
     if (!section || !mount) return;
     const { createCity3D, webglAvailable } = await import("../../scripts/city3d");
-    if (!webglAvailable()) return;
+    if (!webglAvailable()) return fallback();
 
     const config = JSON.parse(mount.dataset.config ?? "{}");
     const markers = new Map(spots.map((spot) => [spot.dataset.hotspot ?? "", spot]));
@@ -568,6 +670,10 @@ const city3d = { modelUrl: CITY_MODEL_URL, spots: hotspots.map(({ id, anchor }) 
       container: mount,
       spots: config.spots,
       markers,
+      labels: Array.from(section.querySelectorAll<HTMLElement>("[data-city-label]")).map((el) => ({
+        el,
+        pos: JSON.parse(el.dataset.cityLabel ?? "[0,0,0]"),
+      })),
       modelUrl: config.modelUrl || undefined,
       reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
       // Hovering a building shows its card; moving away closes it again.
@@ -608,19 +714,37 @@ const city3d = { modelUrl: CITY_MODEL_URL, spots: hotspots.map(({ id, anchor }) 
       ready.reset();
     });
 
+    // Drop the flat map's drag-scroll position before the 3D view takes over the section.
+    if (viewport) viewport.scrollLeft = 0;
     requestAnimationFrame(() => section.classList.add("is-3d"));
   }
 
-  // Only download the 3D code when the visitor gets close to the section.
-  if (section && mount && "IntersectionObserver" in window) {
+  // Build the map in the background once the hero's fly-in has finished (~9.5 s after it
+  // appears, so the two never compete), or straight away if the visitor scrolls here first.
+  let started = false;
+  const begin = () => {
+    if (started || !section || !mount) return;
+    started = true;
+    const safety = window.setTimeout(fallback, 12000);
+    start3D()
+      .catch((err) => {
+        console.warn("3D map unavailable; showing the illustration.", err);
+        fallback();
+      })
+      .finally(() => window.clearTimeout(safety));
+  };
+  window.addEventListener("hero:ready", () => window.setTimeout(begin, 9500), { once: true });
+  if (section && "IntersectionObserver" in window) {
     const io = new IntersectionObserver(
       (entries) => {
         if (!entries.some((e) => e.isIntersecting)) return;
         io.disconnect();
-        start3D().catch((err) => console.warn("3D map unavailable; showing the illustration.", err));
+        begin();
       },
       { rootMargin: "600px 0px" },
     );
     io.observe(section);
+  } else {
+    begin();
   }
 </script>

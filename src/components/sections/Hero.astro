@@ -1,24 +1,68 @@
 ---
 import Placeholder from "../Placeholder.astro";
 import { media } from "../../data/site";
+
+// Letters drop in one by one, each landing with a glitter spark.
+// `--i` is the stagger index; the tagline continues from where the title ends.
+const title = [["Miracle"], ["Dome", "City"]];
+const tagline = ["Where", "Heaven", "Meets", "Earth"];
+let i = 0;
+const letters = (word: string) => [...word].map((ch) => ({ ch, style: `--i:${i++}` }));
+const titleLines = title.map((line) => line.map(letters));
+const titleCount = i;
+const taglineWords = tagline.map(letters);
+
+// Glitter dust that keeps twinkling around the title once it has landed (deterministic layout).
+let seed = 7;
+const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+const glitter = Array.from({ length: 30 }, () => ({
+  style: `left:${(rand() * 100).toFixed(1)}%;top:${(rand() * 100).toFixed(1)}%;--s:${(0.35 + rand() * 0.75).toFixed(2)};--d:${(rand() * 6).toFixed(2)}s;--t:${(2.6 + rand() * 3).toFixed(2)}s`,
+}));
 ---
 
-<section class="hero band" id="top">
+<section class="hero band" id="top" data-hero>
   <div class="band__media hero__media" aria-hidden="true">
     <div data-parallax="0.12">
       <Placeholder label="Miracle Dome City aerial at sunset" ratio="auto" class="hero__ph" src={media.hero || undefined} scene="aerial" />
     </div>
+    <!-- The 3D city (non-interactive, flies in automatically) mounts here once loaded. -->
+    <div class="hero__3d" data-hero-3d></div>
   </div>
 
   <div class="hero__content container-wide">
-    <p class="eyebrow hero__eyebrow reveal">A City of Purpose</p>
-    <h1 class="hero__brand reveal">Miracle<br />Dome City</h1>
-    <p class="tagline hero__tagline reveal">Where Heaven Meets Earth</p>
-    <p class="hero__lede reveal">
+    <p class="eyebrow hero__eyebrow hero-reveal">A City of Purpose</p>
+    <div class="hero__titles" style={`--title-count:${titleCount}`}>
+      <span class="hero__glitter" aria-hidden="true">
+        {glitter.map((g) => <span class="glitter" style={g.style} />)}
+      </span>
+      <h1 class="hero__brand" aria-label="Miracle Dome City">
+        {
+          titleLines.map((line) => (
+            <span class="hero__line" aria-hidden="true">
+              {line.map((word) => (
+                <span class="gloss-word">
+                  {word.map((l) => <span class="gloss-letter" style={l.style}>{l.ch}</span>)}
+                </span>
+              ))}
+            </span>
+          ))
+        }
+      </h1>
+      <p class="tagline hero__tagline" aria-label="Where Heaven Meets Earth">
+        {
+          taglineWords.map((word) => (
+            <span class="gloss-word" aria-hidden="true">
+              {word.map((l) => <span class="gloss-letter gloss-letter--gold" style={l.style}>{l.ch}</span>)}
+            </span>
+          ))
+        }
+      </p>
+    </div>
+    <p class="hero__lede hero-reveal">
       A landmark vision taking shape in Sri Lanka. A place for the multitudes,
       a home for the weary, a mountain for prayer, and a city of purpose.
     </p>
-    <div class="hero__actions reveal">
+    <div class="hero__actions hero-reveal">
       <a class="btn-play" href="#explore">
         <span class="play-icon" aria-hidden="true"></span>
         Explore the City <span aria-hidden="true">→</span>
@@ -54,9 +98,172 @@ import { media } from "../../data/site";
     pointer-events: none;
   }
 
+  /* 3D city: fades in over the illustration once ready. */
+  .hero__3d {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 1.6s var(--ease-out);
+    pointer-events: none;
+  }
+
+  .hero__3d :global(.city3d__canvas) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .hero.is-3d .hero__3d {
+    opacity: 1;
+  }
+
+  /* The illustration is only a placeholder now; stop its zoom loop under the 3D view. */
+  .hero.is-3d .hero__media :global(.hero__ph) {
+    animation: none;
+  }
+
   .hero__content {
     position: relative;
     z-index: 1;
+  }
+
+  @media (max-width: 900px) {
+    /* Phones/tablets: the text sits over the sky; darken behind it for legibility. */
+    .hero__media::after {
+      background:
+        linear-gradient(180deg, rgba(12, 14, 18, 0.55) 0%, rgba(12, 14, 18, 0.7) 35%, rgba(12, 14, 18, 0.35) 62%, rgba(12, 14, 18, 0.15) 80%, rgba(12, 14, 18, 0.75) 100%);
+    }
+  }
+
+  /* ---------- Glittering letter-by-letter drop ---------- */
+  .hero__titles {
+    position: relative;
+    /* Timing: title letters every 70 ms, tagline letters every 35 ms right after. */
+    --drop: 0.9s;
+  }
+
+  .hero__line {
+    display: block;
+  }
+
+  .gloss-word {
+    display: inline-block;
+    white-space: nowrap;
+    margin-right: 0.28em;
+  }
+
+  .gloss-word:last-child {
+    margin-right: 0;
+  }
+
+  .gloss-letter {
+    --start: calc(0.35s + var(--i) * 0.07s);
+    position: relative;
+    display: inline-block;
+    color: transparent;
+    background:
+      linear-gradient(105deg, transparent 0 30%, rgba(255, 255, 255, 0.95) 45%, rgba(255, 238, 200, 0.95) 50%, rgba(255, 255, 255, 0.95) 55%, transparent 70% 100%),
+      linear-gradient(180deg, #ffffff 0%, #ece7dd 55%, #c9c1b2 100%);
+    background-size: 300% 100%, 100% 100%;
+    background-position: 150% 0, 0 0;
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
+    opacity: 0;
+    transform-origin: 50% 0;
+    animation:
+      letter-drop var(--drop) cubic-bezier(0.2, 0.9, 0.25, 1.2) var(--start) both,
+      letter-sheen 6s ease-in-out calc(var(--start) + 1.4s) infinite;
+  }
+
+  .gloss-letter--gold {
+    --start: calc(0.5s + var(--title-count) * 0.07s + (var(--i) - var(--title-count)) * 0.035s);
+    background:
+      linear-gradient(105deg, transparent 0 30%, rgba(255, 252, 238, 1) 45%, #ffffff 50%, rgba(255, 252, 238, 1) 55%, transparent 70% 100%),
+      linear-gradient(180deg, #f8e1a6 0%, #e4c57a 50%, #b8913f 100%);
+    background-size: 300% 100%, 100% 100%;
+    background-position: 150% 0, 0 0;
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.5));
+  }
+
+  /* Glitter spark that bursts as each letter lands. */
+  .gloss-letter::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 18%;
+    width: 0.7em;
+    height: 0.7em;
+    pointer-events: none;
+    background:
+      radial-gradient(circle, #fff 0 6%, rgba(255, 228, 160, 0.9) 10%, transparent 34%),
+      linear-gradient(90deg, transparent 46%, rgba(255, 244, 214, 0.95) 50%, transparent 54%),
+      linear-gradient(0deg, transparent 46%, rgba(255, 244, 214, 0.95) 50%, transparent 54%);
+    transform: translate(-50%, -50%) scale(0) rotate(0deg);
+    opacity: 0;
+    animation: letter-spark 0.75s ease-out calc(var(--start) + var(--drop) * 0.55) both;
+  }
+
+  .gloss-letter--gold::after {
+    width: 1.6em;
+    height: 1.6em;
+    top: 30%;
+  }
+
+  /* Only transform + opacity, so the browser can run it on the compositor even while the
+     page is busy (e.g. while the 3D city is being built). */
+  @keyframes letter-drop {
+    0% { opacity: 0; transform: translateY(-1.1em) rotateX(70deg) scale(1.15); }
+    55% { opacity: 1; transform: translateY(0.06em) rotateX(0deg) scale(1); }
+    75% { transform: translateY(-0.02em); }
+    100% { opacity: 1; transform: none; }
+  }
+
+  @keyframes letter-spark {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0) rotate(0deg); }
+    30% { opacity: 1; transform: translate(-50%, -50%) scale(1.1) rotate(30deg); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(90deg); }
+  }
+
+  /* The light sweeps letter by letter (each starts a little later), then pauses. */
+  @keyframes letter-sheen {
+    0% { background-position: 150% 0, 0 0; }
+    14%, 100% { background-position: -50% 0, 0 0; }
+  }
+
+  .hero__brand {
+    perspective: 700px;
+  }
+
+  /* Gold glitter dust twinkling around the title after it lands. */
+  .hero__glitter {
+    position: absolute;
+    inset: -8% -4% -8% -2%;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .glitter {
+    position: absolute;
+    width: calc(0.9rem * var(--s));
+    height: calc(0.9rem * var(--s));
+    background:
+      radial-gradient(circle, #fff 0 8%, rgba(255, 224, 150, 0.85) 14%, transparent 40%),
+      linear-gradient(90deg, transparent 46%, rgba(255, 236, 190, 0.9) 50%, transparent 54%),
+      linear-gradient(0deg, transparent 46%, rgba(255, 236, 190, 0.9) 50%, transparent 54%);
+    opacity: 0;
+    transform: scale(0);
+    animation: glitter var(--t) ease-in-out calc(2.6s + var(--d)) infinite;
+  }
+
+  @keyframes glitter {
+    0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+    18% { opacity: 1; transform: scale(1) rotate(45deg); }
+    36% { opacity: 0; transform: scale(0.1) rotate(90deg); }
   }
 
   .hero__eyebrow {
@@ -86,10 +293,53 @@ import { media } from "../../data/site";
   }
 
   .hero__actions { margin-top: 2rem; }
-  .hero__brand.reveal { transition-delay: 0.08s; }
-  .hero__tagline.reveal { transition-delay: 0.18s; }
-  .hero__lede.reveal { transition-delay: 0.28s; }
-  .hero__actions.reveal { transition-delay: 0.38s; }
+  /* Supporting text follows once the title and tagline have landed. */
+  .hero__eyebrow.hero-reveal { transition-delay: 0.1s; }
+  .hero__lede.hero-reveal { transition-delay: 2.5s; }
+  .hero__actions.hero-reveal { transition-delay: 2.7s; }
+
+  /* ---------- Start sequence ----------
+     Nothing shows until the 3D city is on screen (.is-ready). Then the title drops in over it.
+     The illustration only appears as a fallback (.is-fallback) when 3D isn't available. */
+  .hero__media {
+    background:
+      radial-gradient(ellipse at 72% 42%, rgba(232, 150, 90, 0.16), transparent 60%),
+      linear-gradient(180deg, #141826 0%, #0c0e12 75%);
+  }
+
+  .hero__media > [data-parallax] {
+    visibility: hidden;
+  }
+
+  .hero.is-fallback .hero__media > [data-parallax] {
+    visibility: visible;
+  }
+
+  .hero-reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+      opacity 0.9s var(--ease-out),
+      transform 0.9s var(--ease-out);
+  }
+
+  .hero.is-ready .hero-reveal {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Hold every title animation (a paused animation's delay doesn't elapse either). */
+  .gloss-letter,
+  .gloss-letter::after,
+  .glitter {
+    animation-play-state: paused;
+  }
+
+  .hero.is-ready .gloss-letter,
+  .hero.is-ready .gloss-letter::after,
+  .hero.is-ready .glitter {
+    animation-play-state: running;
+  }
 
   .hero__scroll {
     position: absolute;
@@ -129,11 +379,68 @@ import { media } from "../../data/site";
   @media (prefers-reduced-motion: reduce) {
     .hero__media :global(.hero__ph),
     .hero__scroll span { animation: none; }
+
+    .gloss-letter {
+      opacity: 1;
+      animation: none;
+    }
+
+    .gloss-letter::after,
+    .hero__glitter {
+      display: none;
+    }
+
+    .hero-reveal {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
   }
 </style>
 
 <script>
-  requestAnimationFrame(() => {
-    document.querySelectorAll(".hero .reveal").forEach((el) => el.classList.add("is-visible"));
-  });
+  const hero = document.querySelector<HTMLElement>("[data-hero]");
+  const mount = hero?.querySelector<HTMLElement>("[data-hero-3d]");
+
+  // Show the hero text: it drops in over whatever is on screen at that moment.
+  const reveal = () => {
+    if (hero?.classList.contains("is-ready")) return;
+    hero?.classList.add("is-ready");
+    // Lets the Explore map start building in the background now that the hero is up.
+    window.dispatchEvent(new Event("hero:ready"));
+  };
+  // No 3D (unsupported, failed or too slow): show the illustration and drop the text over it.
+  const fallback = () => {
+    if (hero?.classList.contains("is-ready")) return;
+    hero?.classList.add("is-fallback");
+    reveal();
+  };
+
+  async function startHero3D() {
+    if (!hero || !mount) return;
+    const { createCity3D, webglAvailable } = await import("../../scripts/city3d");
+    if (!webglAvailable()) return fallback();
+    await createCity3D({
+      container: mount,
+      spots: [],
+      markers: new Map(),
+      cinematic: true,
+      reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      onHover: () => {},
+      onSelect: () => {},
+    });
+    // The city appears (far out, starting its zoom) and the title drops in at the same moment.
+    requestAnimationFrame(() => {
+      hero.classList.add("is-3d");
+      reveal();
+    });
+  }
+
+  const safety = window.setTimeout(fallback, 8000);
+  startHero3D()
+    .catch((err) => {
+      console.warn("Hero 3D unavailable; showing the illustration.", err);
+      fallback();
+    })
+    .finally(() => window.clearTimeout(safety));
 </script>
