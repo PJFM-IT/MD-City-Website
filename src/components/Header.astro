@@ -1,22 +1,23 @@
 ---
-const links = [
-  { href: "#top", label: "Home" },
-  { href: "#vision", label: "The Vision" },
-  { href: "#explore", label: "Explore" },
-  { href: "#zion-grounds", label: "Zion Grounds" },
-  { href: "#carmel-hill", label: "Carmel Hill" },
-  { href: "#facility", label: "Facility" },
-  { href: "#historic-moments", label: "Historic Moments" },
-  { href: "#contact", label: "Contact" },
-];
+import Brand from "./Brand.astro";
+import { navLinks as links } from "../data/site";
 ---
 
 <header class="site-header" data-header>
   <div class="site-header__bar">
-    <a class="brand" href="#top" aria-label="Miracle Dome City — Home">
-      <img class="brand__mark" src="/images/logo.png" alt="" width="120" height="66" />
-      <span class="brand__name">Miracle Dome City</span>
-    </a>
+    <Brand />
+
+    <nav class="top-nav" aria-label="Primary">
+      <ul class="top-nav__list">
+        {
+          links.map((link) => (
+            <li>
+              <a href={link.href} data-nav-link>{link.label}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
 
     <button
       class="nav-toggle"
@@ -41,12 +42,12 @@ const links = [
     </button>
   </div>
 
-  <nav class="side-nav__nav" aria-label="Primary">
+  <nav class="side-nav__nav" aria-label="Mobile">
     <ul class="side-nav__list">
       {
         links.map((link, index) => (
           <li>
-            <a href={link.href}>
+            <a href={link.href} data-nav-link>
               <span class="side-nav__index">{String(index + 1).padStart(2, "0")}</span>
               <span class="side-nav__label">{link.label}</span>
             </a>
@@ -65,43 +66,80 @@ const links = [
     inset: 0 0 auto;
     z-index: 50;
     height: var(--header-h);
-    pointer-events: none;
+    background: linear-gradient(180deg, rgba(8, 10, 13, 0.7), transparent);
+    border-bottom: 1px solid transparent;
+    transition:
+      background 0.4s var(--ease-out),
+      border-color 0.4s var(--ease-out),
+      height 0.4s var(--ease-out);
+  }
+
+  .site-header.is-scrolled {
+    height: calc(var(--header-h) - 0.9rem);
+    background: rgba(10, 12, 16, 0.86);
+    backdrop-filter: blur(12px);
+    border-bottom-color: var(--color-line);
   }
 
   .site-header__bar {
-    pointer-events: auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 1.5rem;
     height: 100%;
     width: var(--container-wide);
     margin-inline: auto;
-    padding-block: 0.35rem;
   }
 
-  .brand {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.7rem;
+  .top-nav__list {
+    display: flex;
+    gap: clamp(1rem, 2.2vw, 2.1rem);
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
-  .brand__mark {
-    width: auto;
-    height: 2.35rem;
-    background: #fff;
-    padding: 0.2rem 0.35rem;
-  }
-
-  .brand__name {
-    font-family: var(--font-display);
-    font-size: 1.05rem;
-    letter-spacing: 0.08em;
+  .top-nav__list a {
+    position: relative;
+    display: block;
+    padding-block: 0.4rem;
+    color: rgba(244, 241, 236, 0.85);
+    font-size: 0.64rem;
+    font-weight: 400;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--color-white);
+    white-space: nowrap;
+    transition: color 0.25s var(--ease-out);
+  }
+
+  .top-nav__list a::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: var(--color-gold);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.35s var(--ease-out);
+  }
+
+  .top-nav__list a:hover,
+  .top-nav__list a:focus-visible,
+  .top-nav__list a.is-active {
+    color: var(--color-gold-bright);
+    outline: none;
+  }
+
+  .top-nav__list a:hover::after,
+  .top-nav__list a:focus-visible::after,
+  .top-nav__list a.is-active::after {
+    transform: scaleX(1);
   }
 
   .nav-toggle {
-    display: inline-flex;
+    display: none;
     align-items: center;
     gap: 0.65rem;
     min-height: 2.6rem;
@@ -231,7 +269,8 @@ const links = [
   }
 
   .side-nav__list a:hover,
-  .side-nav__list a:focus-visible {
+  .side-nav__list a:focus-visible,
+  .side-nav__list a.is-active {
     color: var(--color-gold-bright);
     padding-left: 0.35rem;
     outline: none;
@@ -257,11 +296,24 @@ const links = [
     letter-spacing: 0.06em;
   }
 
-  @media (max-width: 640px) {
-    .brand__name {
-      font-size: 0.92rem;
+  @media (max-width: 1100px) {
+    .top-nav {
+      display: none;
     }
 
+    .nav-toggle {
+      display: inline-flex;
+    }
+  }
+
+  @media (min-width: 1101px) {
+    .nav-backdrop,
+    .side-nav {
+      display: none;
+    }
+  }
+
+  @media (max-width: 640px) {
     .nav-toggle__text {
       display: none;
     }
@@ -269,6 +321,15 @@ const links = [
 </style>
 
 <script>
+  import { trackActiveSection } from "../scripts/motion";
+
+  const header = document.querySelector("[data-header]");
+  const onScroll = () => header?.classList.toggle("is-scrolled", window.scrollY > 40);
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  trackActiveSection("[data-nav-link]");
+
   const toggle = document.querySelector("[data-nav-toggle]");
   const closeBtn = document.querySelector("[data-nav-close]");
   const nav = document.querySelector("[data-nav]");
@@ -296,5 +357,9 @@ const links = [
 
   window.addEventListener("keydown", (event) => {
     if (event.key === "Escape") setOpen(false);
+  });
+
+  window.matchMedia("(min-width: 1101px)").addEventListener("change", (event) => {
+    if (event.matches) setOpen(false);
   });
 </script>

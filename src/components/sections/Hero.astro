@@ -1,42 +1,46 @@
 ---
 import Placeholder from "../Placeholder.astro";
+import { media } from "../../data/site";
 ---
 
-<section class="hero" id="top">
-  <div class="hero__media" aria-hidden="true">
-    <Placeholder label="Hero aerial" ratio="auto" class="hero__ph" />
+<section class="hero band" id="top">
+  <div class="band__media hero__media" aria-hidden="true">
+    <div data-parallax="0.12">
+      <Placeholder label="Miracle Dome City aerial at sunset" ratio="auto" class="hero__ph" src={media.hero || undefined} scene="aerial" />
+    </div>
   </div>
 
-  <div class="hero__content container">
-    <p class="eyebrow reveal">A City of Purpose</p>
-    <p class="hero__brand reveal">Miracle Dome City</p>
-    <h1 class="hero__tagline reveal">Where Heaven Meets Earth</h1>
-    <p class="lede reveal">
-      A landmark vision taking shape in Sri Lanka — a place for the multitudes,
+  <div class="hero__content container-wide">
+    <p class="eyebrow hero__eyebrow reveal">A City of Purpose</p>
+    <h1 class="hero__brand reveal">Miracle<br />Dome City</h1>
+    <p class="tagline hero__tagline reveal">Where Heaven Meets Earth</p>
+    <p class="hero__lede reveal">
+      A landmark vision taking shape in Sri Lanka. A place for the multitudes,
       a home for the weary, a mountain for prayer, and a city of purpose.
     </p>
     <div class="hero__actions reveal">
-      <a class="btn" href="#explore">Explore the City <span aria-hidden="true">→</span></a>
+      <a class="btn-play" href="#explore">
+        <span class="play-icon" aria-hidden="true"></span>
+        Explore the City <span aria-hidden="true">→</span>
+      </a>
     </div>
   </div>
+
+  <a class="hero__scroll" href="#vision" aria-label="Scroll to The Vision">
+    <span aria-hidden="true"></span>
+  </a>
 </section>
 
 <style>
   .hero {
-    position: relative;
     min-height: 100svh;
     display: grid;
-    align-items: end;
+    align-items: center;
     overflow: hidden;
-    padding: calc(var(--header-h) + 4rem) 0 5.5rem;
+    padding: calc(var(--header-h) + 2rem) 0 5rem;
   }
 
-  .hero__media { position: absolute; inset: 0; }
-
   .hero__media :global(.hero__ph) {
-    min-height: 100%;
-    height: 100%;
-    aspect-ratio: auto;
     animation: drift 22s ease-in-out infinite alternate;
   }
 
@@ -45,45 +49,86 @@ import Placeholder from "../Placeholder.astro";
     position: absolute;
     inset: 0;
     background:
-      linear-gradient(90deg, rgba(12, 14, 18, 0.88) 0%, rgba(12, 14, 18, 0.45) 48%, rgba(12, 14, 18, 0.25) 100%),
-      linear-gradient(180deg, rgba(12, 14, 18, 0.35) 0%, rgba(12, 14, 18, 0.12) 40%, rgba(12, 14, 18, 0.9) 100%);
+      linear-gradient(90deg, rgba(12, 14, 18, 0.88) 0%, rgba(12, 14, 18, 0.45) 40%, transparent 70%),
+      linear-gradient(180deg, rgba(12, 14, 18, 0.35) 0%, transparent 25%, transparent 70%, rgba(12, 14, 18, 0.8) 100%);
+    pointer-events: none;
   }
 
-  .hero__content { position: relative; z-index: 1; max-width: 40rem; }
+  .hero__content {
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero__eyebrow {
+    letter-spacing: 0.5em;
+  }
 
   .hero__brand {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: clamp(3.2rem, 8vw, 6.2rem);
-    font-weight: 500;
-    line-height: 0.92;
+    font-size: clamp(2.8rem, 7.5vw, 5.8rem);
+    font-weight: 400;
+    line-height: 1;
     letter-spacing: 0.02em;
-    text-transform: uppercase;
     color: var(--color-white);
   }
 
   .hero__tagline {
-    margin-top: 0.85rem;
-    font-family: var(--font-display);
-    font-size: clamp(1.45rem, 3vw, 2.1rem);
-    font-weight: 500;
-    font-style: italic;
-    color: var(--color-gold-bright);
-    letter-spacing: 0.04em;
+    margin-top: 1rem;
+    font-size: clamp(0.8rem, 1.7vw, 1.15rem);
+    letter-spacing: 0.38em;
+  }
+
+  .hero__lede {
+    margin-top: 1.5rem;
+    max-width: 24rem;
+    color: var(--color-muted);
+    font-size: 0.92rem;
+    line-height: 1.65;
   }
 
   .hero__actions { margin-top: 2rem; }
-  .hero__tagline.reveal { transition-delay: 0.12s; }
-  .lede.reveal { transition-delay: 0.22s; }
-  .hero__actions.reveal { transition-delay: 0.34s; }
+  .hero__brand.reveal { transition-delay: 0.08s; }
+  .hero__tagline.reveal { transition-delay: 0.18s; }
+  .hero__lede.reveal { transition-delay: 0.28s; }
+  .hero__actions.reveal { transition-delay: 0.38s; }
+
+  .hero__scroll {
+    position: absolute;
+    left: 50%;
+    bottom: 1.6rem;
+    z-index: 1;
+    width: 1.4rem;
+    height: 2.3rem;
+    border: 1px solid rgba(244, 241, 236, 0.4);
+    border-radius: 999px;
+    transform: translateX(-50%);
+  }
+
+  .hero__scroll span {
+    position: absolute;
+    top: 0.45rem;
+    left: 50%;
+    width: 2px;
+    height: 0.45rem;
+    margin-left: -1px;
+    border-radius: 2px;
+    background: var(--color-gold-bright);
+    animation: scroll-cue 1.8s ease-in-out infinite;
+  }
 
   @keyframes drift {
     from { transform: scale(1.02); }
     to { transform: scale(1.08); }
   }
 
+  @keyframes scroll-cue {
+    0% { opacity: 0; transform: translateY(0); }
+    40% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(0.8rem); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .hero__media :global(.hero__ph) { animation: none; }
+    .hero__media :global(.hero__ph),
+    .hero__scroll span { animation: none; }
   }
 </style>
 
