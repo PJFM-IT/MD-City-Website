@@ -55,6 +55,11 @@ export interface CityController {
   reset: () => void;
   zoom: (factor: number) => void;
   highlight: (id: string | null) => void;
+  /**
+   * Touch screens. Off (default): one finger scrolls the page, the map ignores touches.
+   * On: one finger rotates, two fingers pinch-zoom, and the page doesn't scroll over the map.
+   */
+  setTouchExplore: (on: boolean) => void;
 }
 
 /** Hand control back to the browser between build stages so the page keeps animating. */
@@ -1739,8 +1744,18 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
   controls.autoRotate = !reducedMotion;
   controls.autoRotateSpeed = 0.3;
   // Phones: one finger keeps scrolling the page; two fingers rotate + pinch-zoom.
-  controls.touches = { ONE: null as unknown as THREE.TOUCH, TWO: THREE.TOUCH.DOLLY_ROTATE };
+  // Touch: the map starts passive so the page scrolls normally; setTouchExplore(true) turns on
+  // one-finger rotate + pinch zoom (see ExploreCity's "Tap to explore in 3D" button).
+  const touchOff = { ONE: null as unknown as THREE.TOUCH, TWO: null as unknown as THREE.TOUCH };
+  const touchOn = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+  controls.touches = touchOff;
   renderer.domElement.style.touchAction = "pan-y";
+  const setTouchExplore = (on: boolean) => {
+    controls.touches = on ? touchOn : touchOff;
+    // "none" stops the browser scrolling/zooming the page while the finger is on the map.
+    renderer.domElement.style.touchAction = on ? "none" : "pan-y";
+    if (on) pauseAutoRotate();
+  };
   controls.update();
   if (cinematic) {
     controls.enabled = false;
@@ -2045,5 +2060,5 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
   ready = true;
   loop();
 
-  return { focus, reset, zoom, highlight };
+  return { focus, reset, zoom, highlight, setTouchExplore };
 }
