@@ -53,14 +53,6 @@ const usesMailto = !formspreeId;
         <textarea name="body" rows="5" required data-field="message"></textarea>
       </label>
       <button class="btn btn--solid" type="submit">Send inquiry</button>
-      {
-        usesMailto && (
-          <p class="contact__note">
-            Opens your email app. For in-browser delivery, add
-            <code>PUBLIC_FORMSPREE_ID</code> to <code>.env</code>.
-          </p>
-        )
-      }
     </form>
   </div>
 </section>
@@ -135,15 +127,6 @@ const usesMailto = !formspreeId;
   input:focus,
   textarea:focus {
     border-color: var(--color-gold);
-  }
-
-  .contact__note {
-    color: var(--color-stone);
-    font-size: 0.85rem;
-  }
-
-  code {
-    color: var(--color-gold-bright);
   }
 
   @media (max-width: 860px) {
