@@ -1888,7 +1888,8 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     camera.fov = camera.aspect < 0.7 ? 68 : camera.aspect < 1 ? 58 : camera.aspect < 1.4 ? 46 : 38;
     // Hero on wide screens: shift the picture right so the city sits beside the text.
     // On narrow/portrait screens shift it down instead, so the city sits below the text.
-    if (cinematic && width > 900) camera.setViewOffset(width, height, -width * 0.18, 0, width, height);
+    // Landscape phones count as "wide" too, so the city sits beside the text.
+    if (cinematic && (width > 900 || camera.aspect > 1.3)) camera.setViewOffset(width, height, -width * 0.18, 0, width, height);
     else if (cinematic) camera.setViewOffset(width, height, 0, -height * 0.2, width, height);
     else camera.clearViewOffset();
     camera.updateProjectionMatrix();

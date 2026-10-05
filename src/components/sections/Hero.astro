@@ -135,6 +135,53 @@ const glitter = Array.from({ length: 30 }, () => ({
     }
   }
 
+  /* Small phones: keep the tagline on one line where possible. */
+  /* (`.hero` prefix: these must beat the default rules further down the file.) */
+  @media (max-width: 400px) {
+    .hero .hero__tagline {
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+    }
+
+    .hero .hero__eyebrow {
+      letter-spacing: 0.36em;
+    }
+  }
+
+  /* Landscape phones (short screens): compact so the text and button fit on screen. */
+  @media (max-height: 520px) and (orientation: landscape) {
+    .hero.hero {
+      padding: calc(var(--header-h) + 0.75rem) 0 2.5rem;
+    }
+
+    .hero .hero__brand {
+      font-size: clamp(2rem, 9vh, 2.8rem);
+    }
+
+    .hero .hero__tagline {
+      margin-top: 0.5rem;
+    }
+
+    .hero .hero__lede {
+      margin-top: 0.75rem;
+      max-width: 30rem;
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    .hero .hero__actions {
+      margin-top: 1rem;
+    }
+
+    .hero .hero__scroll {
+      display: none;
+    }
+
+    .hero .hero__media::after {
+      background: linear-gradient(90deg, rgba(12, 14, 18, 0.85) 0%, rgba(12, 14, 18, 0.45) 50%, transparent 80%);
+    }
+  }
+
   /* ---------- Glittering letter-by-letter drop ---------- */
   .hero__titles {
     position: relative;
@@ -436,7 +483,7 @@ const glitter = Array.from({ length: 30 }, () => ({
     });
   }
 
-  const safety = window.setTimeout(fallback, 8000);
+  const safety = window.setTimeout(fallback, 12000);
   startHero3D()
     .catch((err) => {
       console.warn("Hero 3D unavailable; showing the illustration.", err);
