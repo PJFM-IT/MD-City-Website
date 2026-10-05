@@ -108,6 +108,12 @@ export function palm(x: number, y: number, h: number, lean = 0.15) {
   return d;
 }
 
-/** Twinkle stagger: random delay + duration for CSS animation. */
-export const twinkle = (rand: () => number) =>
-  `animation-delay:${(rand() * 4).toFixed(2)}s;animation-duration:${(2.5 + rand() * 3).toFixed(2)}s`;
+/**
+ * Twinkling lights are static now: hundreds of individually animated SVG nodes made the page
+ * repaint constantly. The two rand() calls stay so every seeded scene keeps its exact layout.
+ */
+export const twinkle = (rand: () => number): string | undefined => {
+  rand();
+  rand();
+  return undefined;
+};

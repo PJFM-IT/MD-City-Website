@@ -378,14 +378,6 @@ p {
   opacity: 1;
 }
 
-.scene .twinkle {
-  animation: twinkle 3.5s ease-in-out infinite alternate;
-}
-
-.scene .twinkle--soft {
-  animation-name: twinkle-soft;
-}
-
 .scene .pulse {
   transform-box: fill-box;
   transform-origin: center;
@@ -410,7 +402,6 @@ p {
 }
 
 /* Only animate scenes that are on screen (toggled by scenes.ts). */
-.scene .twinkle,
 .scene .pulse,
 .scene .drift,
 .scene .beam,
@@ -418,22 +409,11 @@ p {
   animation-play-state: paused;
 }
 
-.scene.is-playing .twinkle,
 .scene.is-playing .pulse,
 .scene.is-playing .drift,
 .scene.is-playing .beam,
 .scene.is-playing .glow {
   animation-play-state: running;
-}
-
-@keyframes twinkle {
-  0% { opacity: 0.25; }
-  100% { opacity: 1; }
-}
-
-@keyframes twinkle-soft {
-  0% { opacity: 0.7; }
-  100% { opacity: 1; }
 }
 
 @keyframes sun-pulse {
@@ -457,7 +437,6 @@ p {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .scene .twinkle,
   .scene .pulse,
   .scene .drift,
   .scene .beam,
