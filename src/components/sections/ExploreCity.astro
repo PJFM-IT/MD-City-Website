@@ -332,6 +332,62 @@ const places = [
     margin-bottom: 0.75rem;
   }
 
+  /* Phones (portrait): use most of the screen height so the map isn't squeezed under the heading. */
+  @media (max-width: 720px) and (orientation: portrait) {
+    .explore {
+      height: clamp(560px, 92svh, 780px);
+    }
+
+    .explore .explore__intro .display {
+      font-size: clamp(1.5rem, 7.5vw, 2rem);
+    }
+
+    .explore .explore__sub {
+      font-size: 0.6rem;
+      letter-spacing: 0.22em;
+    }
+
+    .explore .explore__hint {
+      margin-top: 0.5rem;
+      padding-inline: 1rem;
+      font-size: 0.56rem;
+      letter-spacing: 0.1em;
+      line-height: 1.5;
+    }
+  }
+
+  /* Small place names collide with the markers on narrow screens. */
+  @media (max-width: 600px) {
+    .explore.is-3d .explore__places {
+      display: none;
+    }
+  }
+
+  /* Landscape phones: fill the short screen and keep the heading compact. */
+  @media (max-height: 520px) and (orientation: landscape) {
+    .explore {
+      height: max(100svh, 360px);
+    }
+
+    .explore .explore__intro {
+      top: 1rem;
+    }
+
+    .explore .explore__intro .eyebrow,
+    .explore .explore__hint {
+      display: none;
+    }
+
+    .explore .explore__intro .display {
+      font-size: 1.5rem;
+    }
+
+    .explore .explore__cta,
+    .explore .explore__controls {
+      bottom: 0.9rem;
+    }
+  }
+
   .explore__intro {
     position: absolute;
     top: var(--band-pad);
