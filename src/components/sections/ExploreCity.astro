@@ -93,9 +93,16 @@ const places = [
       <span class="explore__hint-hover">Hover a point to explore</span>
       <span class="explore__hint-tap">Tap a point · drag to look around</span>
       <span class="explore__hint-3d explore__hint-3d--mouse">Drag to rotate · hover a building · click to fly in</span>
-      <span class="explore__hint-3d explore__hint-3d--touch">Two fingers to rotate &amp; zoom · tap a point</span>
+      <span class="explore__hint-3d explore__hint-3d--touch">Tap a point · or tap “Explore in 3D” to rotate</span>
     </p>
   </div>
+
+  <!-- Touch screens: the map scrolls with the page until the visitor opts in to rotating it. -->
+  <button class="explore__touch explore__touch--start" type="button" data-touch-start>
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9M21 3v5h-5" /></svg>
+    Explore in 3D
+  </button>
+  <button class="explore__touch explore__touch--done" type="button" data-touch-done hidden>Done</button>
 
   <div class="explore__controls" aria-label="3D map controls">
     <button type="button" data-city-zoom="in" aria-label="Zoom in">+</button>
@@ -243,6 +250,45 @@ const places = [
     z-index: 4;
     display: none;
     gap: 0.4rem;
+  }
+
+  /* "Explore in 3D" / "Done": touch screens only, once the 3D map is up. */
+  .explore__touch {
+    position: absolute;
+    right: 0.75rem;
+    top: calc(var(--band-pad) + 8.5rem);
+    z-index: 4;
+    display: none;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2.5rem;
+    padding: 0 1rem;
+    border: 1px solid var(--color-gold);
+    border-radius: 999px;
+    background: rgba(12, 14, 18, 0.78);
+    backdrop-filter: blur(6px);
+    color: var(--color-gold-bright);
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  @media (hover: none), (pointer: coarse) {
+    .explore.is-3d .explore__touch:not([hidden]) {
+      display: inline-flex;
+    }
+
+    /* While exploring, frame the map with a gold edge so it's clear touches go to the map. */
+    .explore.is-touch-exploring .explore__viewport {
+      box-shadow: inset 0 0 0 2px rgba(228, 197, 122, 0.55);
+    }
+  }
+
+  .explore.is-touch-exploring .explore__touch--done {
+    background: var(--color-gold);
+    color: var(--color-charcoal);
   }
 
   .explore.is-3d .explore__controls {
@@ -769,6 +815,22 @@ const places = [
       openOnly(null);
       ready.reset();
     });
+
+    // Touch screens: "Explore in 3D" turns on one-finger rotate + pinch zoom; "Done", or
+    // scrolling the map out of view, hands touches back to the page.
+    const startBtn = section.querySelector<HTMLButtonElement>("[data-touch-start]");
+    const doneBtn = section.querySelector<HTMLButtonElement>("[data-touch-done]");
+    const setExploring = (on: boolean) => {
+      ready.setTouchExplore(on);
+      section.classList.toggle("is-touch-exploring", on);
+      if (startBtn) startBtn.hidden = on;
+      if (doneBtn) doneBtn.hidden = !on;
+    };
+    startBtn?.addEventListener("click", () => setExploring(true));
+    doneBtn?.addEventListener("click", () => setExploring(false));
+    new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting && section.classList.contains("is-touch-exploring")) setExploring(false);
+    }, { threshold: 0.15 }).observe(section);
 
     // Drop the flat map's drag-scroll position before the 3D view takes over the section.
     if (viewport) viewport.scrollLeft = 0;
