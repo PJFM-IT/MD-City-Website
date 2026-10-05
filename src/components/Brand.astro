@@ -62,9 +62,21 @@ const { variant = "mark" } = Astro.props;
     text-transform: uppercase;
   }
 
+  .brand__name,
+  .brand__tag {
+    white-space: nowrap;
+  }
+
   @media (max-width: 420px) {
+    .brand { gap: 0.55rem; }
     .brand__mark { height: 1.8rem; }
-    .brand__name { font-size: 0.78rem; }
-    .brand__tag { font-size: 0.42rem; }
+    .brand__text { padding-left: 0.55rem; }
+    .brand__name { font-size: 0.74rem; letter-spacing: 0.06em; }
+    .brand__tag { font-size: 0.4rem; letter-spacing: 0.2em; }
+  }
+
+  /* Smallest phones (iPhone SE 1st gen etc.): monogram only, so the menu button has room. */
+  @media (max-width: 350px) {
+    .brand--mark .brand__text { display: none; }
   }
 </style>
