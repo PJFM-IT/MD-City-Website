@@ -20,6 +20,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+import { SMAAPass } from "three/addons/postprocessing/SMAAPass.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 export interface CitySpot {
@@ -1709,7 +1710,9 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
 
   await yieldToBrowser();
   // ---------- Rendering ----------
-  const target = new THREE.WebGLRenderTarget(1, 1, { samples: lowEnd ? 2 : 4, type: THREE.HalfFloatType });
+  // No MSAA buffer: resolving a multisampled half-float target cost ~20 ms a frame (2/3 of the
+  // frame on typical laptops). Edges are smoothed by a final SMAA pass instead (~1–2 ms).
+  const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType });
   const composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));
   // Safety net: drop any NaN/Inf pixel before bloom. A single bad pixel would otherwise be blurred
@@ -1730,6 +1733,7 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
   const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.8, 0.55, 0.84);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
+  composer.addPass(new SMAAPass(1, 1));
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.copy(HOME.target);
@@ -2062,26 +2066,30 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
   }
   document.addEventListener("visibilitychange", () => !document.hidden && loop());
 
-  // Compile every shader in the background (parallel compile where the GPU supports it)
-  // instead of stalling the page on the first frame.
+  // Compile every shader in the background (parallel compile where the GPU supports it).
   try {
     await renderer.compileAsync(scene, camera);
   } catch {
     /* falls back to compiling on the first frame */
   }
-  // Warm up in two separate steps so no single frame stalls the page for long:
-  // first upload geometry/textures (plain render), then compile the post-processing passes.
   if (cinematic) {
     camera.position.copy(INTRO.fromPos);
     camera.lookAt(INTRO.fromTarget);
   }
   await yieldToBrowser();
-  renderer.render(scene, camera);
-  await yieldToBrowser();
+  // First frame with culling off, so every mesh and texture is uploaded now rather than when
+  // it first comes into view during the fly-in. This also compiles the post-processing passes.
+  const culled: THREE.Object3D[] = [];
+  scene.traverse((o) => {
+    if (o.frustumCulled) {
+      o.frustumCulled = false;
+      culled.push(o);
+    }
+  });
   composer.render();
+  culled.forEach((o) => (o.frustumCulled = true));
   await yieldToBrowser();
   ready = true;
   loop();
-
   return { focus, reset, zoom, highlight };
 }
