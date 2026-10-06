@@ -31,7 +31,10 @@ const places = [
   <!-- Scene and hotspots share one 16:9 stage so markers stay on their landmarks at any size. -->
   <div class="explore__viewport" data-explore-viewport>
     <div class="explore__stage">
-      <Placeholder label="Masterplan aerial of Miracle Dome City" ratio="auto" class="explore__ph" src={media.explore || undefined} scene="aerial" seed={21} />
+      <!-- Flat illustrated map, only used when 3D isn't available (kept inert until then). -->
+      <template data-explore-fallback>
+        <Placeholder label="Masterplan aerial of Miracle Dome City" ratio="auto" class="explore__ph" src={media.explore || undefined} scene="aerial" seed={21} />
+      </template>
       <!-- The interactive 3D city mounts here once it has loaded. -->
       <div class="explore__3d" data-city3d data-config={JSON.stringify(city3d)} aria-label="Interactive 3D map of Miracle Dome City" role="img"></div>
       <div class="explore__shade" aria-hidden="true"></div>
@@ -93,7 +96,7 @@ const places = [
       <span class="explore__hint-hover">Hover a point to explore</span>
       <span class="explore__hint-tap">Tap a point · drag to look around</span>
       <span class="explore__hint-3d explore__hint-3d--mouse">Drag to rotate · hover a building · click to fly in</span>
-      <span class="explore__hint-3d explore__hint-3d--touch">Two fingers to rotate &amp; zoom · tap a point</span>
+      <span class="explore__hint-3d explore__hint-3d--touch">Swipe sideways to rotate · pinch to zoom · tap a point</span>
     </p>
   </div>
 
@@ -640,6 +643,8 @@ const places = [
 </style>
 
 <script>
+  import { initScene } from "../../scripts/scenes";
+
   const map = document.querySelector<HTMLElement>("[data-hotspots]");
   const spots = Array.from(map?.querySelectorAll<HTMLElement>("[data-hotspot]") ?? []);
   let lastPointer = "mouse";
@@ -707,6 +712,12 @@ const places = [
   // No 3D (unsupported, failed or too slow): show the flat illustrated map instead.
   const fallback = () => {
     if (!section || section.classList.contains("is-3d")) return;
+    const tpl = section.querySelector<HTMLTemplateElement>("[data-explore-fallback]");
+    if (tpl) {
+      const parent = tpl.parentElement;
+      tpl.replaceWith(tpl.content);
+      parent?.querySelectorAll<HTMLElement>("[data-scene]").forEach((el) => initScene(el));
+    }
     section.classList.add("is-fallback");
     centre();
   };
@@ -789,15 +800,30 @@ const places = [
       })
       .finally(() => window.clearTimeout(safety));
   };
-  window.addEventListener("hero:ready", () => window.setTimeout(begin, 9500), { once: true });
+  // Phones and modest computers skip the background build (it would slow the hero down) and
+  // build only as the visitor scrolls towards the map.
+  const capable = !window.matchMedia("(pointer: coarse)").matches && (navigator.hardwareConcurrency || 8) > 4;
+  let heroUp = false;
+  let near = false;
+  window.addEventListener(
+    "hero:ready",
+    () => {
+      heroUp = true;
+      if (near) begin();
+      else if (capable) window.setTimeout(begin, 9500);
+    },
+    { once: true },
+  );
   if (section && "IntersectionObserver" in window) {
     const io = new IntersectionObserver(
       (entries) => {
         if (!entries.some((e) => e.isIntersecting)) return;
         io.disconnect();
-        begin();
+        near = true;
+        // Never build both cities at once: wait for the hero's city if it is still loading.
+        if (heroUp) begin();
       },
-      { rootMargin: "600px 0px" },
+      { rootMargin: "1200px 0px" },
     );
     io.observe(section);
   } else {

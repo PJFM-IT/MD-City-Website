@@ -23,7 +23,10 @@ const glitter = Array.from({ length: 30 }, () => ({
 <section class="hero band" id="top" data-hero>
   <div class="band__media hero__media" aria-hidden="true">
     <div data-parallax="0.12">
-      <Placeholder label="Miracle Dome City aerial at sunset" ratio="auto" class="hero__ph" src={media.hero || undefined} scene="aerial" />
+      <!-- Fallback only (no 3D): kept inert in a template so it costs nothing when 3D runs. -->
+      <template data-hero-fallback>
+        <Placeholder label="Miracle Dome City aerial at sunset" ratio="auto" class="hero__ph" src={media.hero || undefined} scene="aerial" />
+      </template>
     </div>
     <!-- The 3D city (non-interactive, flies in automatically) mounts here once loaded. -->
     <div class="hero__3d" data-hero-3d></div>
@@ -446,7 +449,9 @@ const glitter = Array.from({ length: 30 }, () => ({
 </style>
 
 <script>
-  const hero = document.querySelector<HTMLElement>("[data-hero]");
+  import { initScene } from "../../scripts/scenes";
+
+  const hero =document.querySelector<HTMLElement>("[data-hero]");
   const mount = hero?.querySelector<HTMLElement>("[data-hero-3d]");
 
   // Show the hero text: it drops in over whatever is on screen at that moment.
@@ -459,6 +464,12 @@ const glitter = Array.from({ length: 30 }, () => ({
   // No 3D (unsupported, failed or too slow): show the illustration and drop the text over it.
   const fallback = () => {
     if (hero?.classList.contains("is-ready")) return;
+    const tpl = hero?.querySelector<HTMLTemplateElement>("[data-hero-fallback]");
+    if (tpl) {
+      const parent = tpl.parentElement;
+      tpl.replaceWith(tpl.content);
+      parent?.querySelectorAll<HTMLElement>("[data-scene]").forEach((el) => initScene(el));
+    }
     hero?.classList.add("is-fallback");
     reveal();
   };

@@ -116,7 +116,7 @@ export const media = {
   visionary: "",
   finalHero: "",
   /** Real photo of the existing Miracle Dome (shown in its 3D map card). */
-  miracleDome: "/images/miracle-dome.png",
+  miracleDome: "/images/miracle-dome.webp",
 };
 
 /** `src` empty = the illustrated `scene` is shown instead. */
