@@ -192,8 +192,15 @@ const glitter = Array.from({ length: 30 }, () => ({
     --drop: 0.9s;
   }
 
+  /* One shadow per line instead of one filter per letter (~40 filters re-rendered every
+     frame of the animation was the main cost of the hero). Looks identical. */
   .hero__line {
     display: block;
+    filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
+  }
+
+  .hero__tagline {
+    filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.5));
   }
 
   .gloss-word {
@@ -219,7 +226,6 @@ const glitter = Array.from({ length: 30 }, () => ({
     background-repeat: no-repeat;
     -webkit-background-clip: text;
     background-clip: text;
-    filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
     opacity: 0;
     transform-origin: 50% 0;
     animation:
@@ -237,7 +243,6 @@ const glitter = Array.from({ length: 30 }, () => ({
     background-repeat: no-repeat;
     -webkit-background-clip: text;
     background-clip: text;
-    filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.5));
   }
 
   /* Glitter spark that bursts as each letter lands. */
