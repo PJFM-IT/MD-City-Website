@@ -459,8 +459,14 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
   const { container, spots, markers, reducedMotion } = opts;
   const labels = opts.labels ?? [];
   const mobile = window.matchMedia("(pointer: coarse)").matches;
-  const pixelRatio = Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 2);
-  const detail = mobile ? 0.55 : 1;
+  // Phones and modest computers (≤4 cores or ≤4 GB) get the light tier: fewer trees/houses,
+  // native-resolution rendering and 30 fps. Everyone else renders at up to 1.5× resolution.
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  const lowEnd = mobile || (navigator.hardwareConcurrency || 8) <= 4 || (nav.deviceMemory ?? 8) <= 4;
+  let pixelRatio = Math.min(window.devicePixelRatio || 1, lowEnd ? 1.5 : 2);
+  const detail = lowEnd ? 0.55 : 1;
+  // Cap at 30 fps on the light tier (also used if a device turns out slower than expected).
+  let minFrameMs = lowEnd ? 1000 / 31 : 0;
   const rand = rng(42);
 
   const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
@@ -548,7 +554,7 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
   await yieldToBrowser();
   // Terrain with vertex colours: lush lowland, beaches, mangrove edges, paved plots, hazy hill country
   {
-    const segs = Math.round(280 * (mobile ? 0.7 : 1));
+    const segs = Math.round(280 * (lowEnd ? 0.7 : 1));
     const geo = new THREE.PlaneGeometry(TERRAIN_SIZE, TERRAIN_SIZE, segs, segs);
     geo.rotateX(-Math.PI / 2);
     const p = geo.attributes.position as THREE.BufferAttribute;
@@ -1703,7 +1709,7 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
 
   await yieldToBrowser();
   // ---------- Rendering ----------
-  const target = new THREE.WebGLRenderTarget(1, 1, { samples: mobile ? 2 : 4, type: THREE.HalfFloatType });
+  const target = new THREE.WebGLRenderTarget(1, 1, { samples: lowEnd ? 2 : 4, type: THREE.HalfFloatType });
   const composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));
   // Safety net: drop any NaN/Inf pixel before bloom. A single bad pixel would otherwise be blurred
@@ -1738,8 +1744,9 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
   controls.maxPolarAngle = 1.42;
   controls.autoRotate = !reducedMotion;
   controls.autoRotateSpeed = 0.3;
-  // Phones: one finger keeps scrolling the page; two fingers rotate + pinch-zoom.
-  controls.touches = { ONE: null as unknown as THREE.TOUCH, TWO: THREE.TOUCH.DOLLY_ROTATE };
+  // Touch: "pan-y" leaves vertical swipes to the browser (the page scrolls as usual), while a
+  // sideways swipe reaches the map and rotates it; two fingers pinch-zoom.
+  controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
   renderer.domElement.style.touchAction = "pan-y";
   controls.update();
   if (cinematic) {
@@ -1978,15 +1985,46 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     egrets.instanceMatrix.needsUpdate = true;
   }
 
+  // Adaptive smoothness: if a device can't keep up, cap it at 30 fps and step the resolution
+  // down towards 1× (never below, and the glow/bloom always stays on so the look is unchanged).
+  // Measured over ~2 s windows, skipping the first few seconds while the page is still loading.
+  const perf = { frames: 0, since: 0, last: 0, start: 0 };
+  const adapt = (now: number) => {
+    if (!perf.start) perf.start = now;
+    if (now - perf.start < 4000) return;
+    if (!perf.since) perf.since = now;
+    perf.frames++;
+    const span = now - perf.since;
+    if (span < 2000) return;
+    const fps = (perf.frames * 1000) / span;
+    perf.frames = 0;
+    perf.since = now;
+    if (fps >= (minFrameMs ? 22 : 35)) return;
+    minFrameMs = 1000 / 31;
+    if (pixelRatio > 1) {
+      pixelRatio = Math.max(1, pixelRatio - 0.25);
+      renderer.setPixelRatio(pixelRatio);
+      resize();
+    }
+  };
+
   let ready = false; // set once shaders are compiled; no frames before that
   function loop() {
     if (running || !ready) return;
     running = true;
-    const frame = () => {
+    perf.since = 0;
+    perf.frames = 0;
+    const frame = (now: number) => {
       if (!visible || document.hidden) {
         running = false;
         return;
       }
+      if (minFrameMs && now - perf.last < minFrameMs) {
+        requestAnimationFrame(frame);
+        return;
+      }
+      perf.last = now;
+      adapt(now);
       const t = clock.getElapsedTime();
       timeUniforms.forEach((u) => (u.value = reducedMotion ? 0 : t));
 
