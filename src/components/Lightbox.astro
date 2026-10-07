@@ -1,12 +1,12 @@
 ---
 import Scene from "./scenes/Scene.astro";
-import { givingGallery, prosperityGallery } from "../data/site";
+import { givingGallery, masterplanGallery, prosperityGallery } from "../data/site";
 
 /**
  * One shared photo lightbox. Open it from anywhere with
  * `<button data-lightbox="giving" data-index="0">` — the key picks the gallery.
  */
-const galleries = { giving: givingGallery, prosperity: prosperityGallery };
+const galleries = { giving: givingGallery, prosperity: prosperityGallery, masterplan: masterplanGallery };
 
 // Scenes already drawn on the page (marked with data-gallery-item) are cloned from there;
 // only the remaining ones need a template here.
@@ -168,7 +168,10 @@ const onPage = new Set(["giving-0", "giving-1", "giving-2", "giving-3", "giving-
     let node: HTMLElement;
     const key = `${galleryKey}-${index}`;
     const sceneTpl = modal?.querySelector<HTMLTemplateElement>(`[data-lightbox-scene="${key}"]`);
-    const pageScene = document.querySelector(`[data-gallery-item="${key}"] [data-scene]`);
+    // The on-page scene may not be drawn yet (lazy); then take it from its template.
+    const pageScene =
+      document.querySelector(`[data-gallery-item="${key}"] [data-scene]`) ??
+      document.querySelector<HTMLTemplateElement>(`[data-gallery-item="${key}"] template[data-lazy-scene]`)?.content.querySelector("[data-scene]");
     const sceneSource = sceneTpl?.content ?? pageScene;
     if (item.src) {
       const img = document.createElement("img");
