@@ -20,7 +20,7 @@ const places = [
   { name: "Negombo Lagoon", dir: "N", pos: [-150, 4, -270] },
   { name: "Bandaranaike Int'l Airport", dir: "SW", pos: [-265, 12, 255] },
   { name: "Free Trade Zone", dir: "", pos: [-240, 12, 80] },
-  { name: "Katunayake–Veyangoda Rd", dir: "NE", pos: [300, 6, -70] },
+  { name: "Katunayake–Veyangoda Rd", dir: "NE", pos: [150, 6, -240] },
   { name: "Minuwangoda · Veyangoda", dir: "NE", pos: [560, 14, -380] },
   { name: "Colombo 32 km", dir: "S", pos: [-130, 6, 520] },
   { name: "Central hills", dir: "E", pos: [640, 52, 40] },
@@ -106,7 +106,7 @@ const places = [
   </div>
 
   <div class="explore__cta">
-    <a class="btn" href="#zion-grounds">Click to explore <span aria-hidden="true">→</span></a>
+    <button class="btn" type="button" data-lightbox="masterplan" data-index="0">View the masterplan <span aria-hidden="true">→</span></button>
   </div>
 </section>
 
@@ -294,6 +294,7 @@ const places = [
   .place {
     position: absolute;
     z-index: 1;
+    pointer-events: none; /* labels are decoration: touches go straight to the map */
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
@@ -437,6 +438,8 @@ const places = [
   .hotspot {
     z-index: 3;
     pointer-events: auto;
+    /* Like the map underneath: vertical swipes scroll the page, sideways ones never navigate. */
+    touch-action: pan-y;
   }
 
   .hotspot {
@@ -636,7 +639,7 @@ const places = [
 </style>
 
 <script>
-  import { initScene } from "../../scripts/scenes";
+  import { initScene, stampScene } from "../../scripts/scenes";
 
   const map = document.querySelector<HTMLElement>("[data-hotspots]");
   const spots = Array.from(map?.querySelectorAll<HTMLElement>("[data-hotspot]") ?? []);
@@ -688,14 +691,15 @@ const places = [
     if (event.key === "Escape") openOnly(null);
   });
 
-  // Phones: start the draggable masterplan centred.
+  // Phones, flat fallback map only: start the draggable masterplan centred. (Never measured at
+  // load: reading scrollWidth forced a full-page layout that froze phones for seconds.)
   const viewport = document.querySelector<HTMLElement>("[data-explore-viewport]");
   const centre = () => {
-    if (viewport && viewport.scrollWidth > viewport.clientWidth) {
+    if (!viewport?.closest(".is-fallback")) return;
+    if (viewport.scrollWidth > viewport.clientWidth) {
       viewport.scrollLeft = (viewport.scrollWidth - viewport.clientWidth) / 2;
     }
   };
-  centre();
   window.matchMedia("(max-width: 720px)").addEventListener("change", centre);
 
   // ---------- Interactive 3D city (progressive enhancement) ----------
@@ -709,6 +713,7 @@ const places = [
     if (tpl) {
       const parent = tpl.parentElement;
       tpl.replaceWith(tpl.content);
+      parent?.querySelectorAll<HTMLElement>("[data-lazy-scene-host]").forEach((el) => stampScene(el));
       parent?.querySelectorAll<HTMLElement>("[data-scene]").forEach((el) => initScene(el));
     }
     section.classList.add("is-fallback");
@@ -779,8 +784,6 @@ const places = [
     requestAnimationFrame(() => section.classList.add("is-3d"));
   }
 
-  // Build the map in the background once the hero's fly-in has finished (~9.5 s after it
-  // appears, so the two never compete), or straight away if the visitor scrolls here first.
   let started = false;
   const begin = () => {
     if (started || !section || !mount) return;
@@ -793,30 +796,17 @@ const places = [
       })
       .finally(() => window.clearTimeout(safety));
   };
-  // Phones and modest computers skip the background build (it would slow the hero down) and
-  // build only as the visitor scrolls towards the map.
-  const capable = !window.matchMedia("(pointer: coarse)").matches && (navigator.hardwareConcurrency || 8) > 4;
-  let heroUp = false;
-  let near = false;
-  window.addEventListener(
-    "hero:ready",
-    () => {
-      heroUp = true;
-      if (near) begin();
-      else if (capable) window.setTimeout(begin, 9500);
-    },
-    { once: true },
-  );
+  // The map shares the hero's city (city3d.ts), so it just attaches once the hero is up — no
+  // second build. If the visitor reaches the map first, the hero's build is awaited.
+  window.addEventListener("hero:ready", begin, { once: true });
   if (section && "IntersectionObserver" in window) {
     const io = new IntersectionObserver(
       (entries) => {
         if (!entries.some((e) => e.isIntersecting)) return;
         io.disconnect();
-        near = true;
-        // Never build both cities at once: wait for the hero's city if it is still loading.
-        if (heroUp) begin();
+        begin();
       },
-      { rootMargin: "1200px 0px" },
+      { rootMargin: "600px 0px" },
     );
     io.observe(section);
   } else {

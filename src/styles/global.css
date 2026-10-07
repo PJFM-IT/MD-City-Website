@@ -39,6 +39,8 @@
 html {
   scroll-behavior: smooth;
   scroll-padding-top: var(--header-h);
+  /* A sideways swipe (e.g. turning the 3D map) must never trigger the browser's back gesture. */
+  overscroll-behavior-x: none;
 }
 
 body {
