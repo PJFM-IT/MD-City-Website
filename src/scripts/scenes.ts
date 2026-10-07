@@ -123,8 +123,36 @@ export function initScene(el: HTMLElement) {
   });
 }
 
+/** Puts a lazily drawn scene (Placeholder's <template data-lazy-scene>) into the page. */
+export function stampScene(host: HTMLElement) {
+  const tpl = host.querySelector<HTMLTemplateElement>(":scope > template[data-lazy-scene]");
+  if (!tpl) return;
+  tpl.replaceWith(tpl.content);
+  host.querySelectorAll<HTMLElement>("[data-scene]").forEach(initScene);
+}
+
+/** Draw each illustration only once it comes within ~a screen of the viewport. */
+function lazyScenes(root: ParentNode) {
+  const hosts = root.querySelectorAll<HTMLElement>("[data-lazy-scene-host]");
+  if (!("IntersectionObserver" in window)) {
+    hosts.forEach(stampScene);
+    return;
+  }
+  const observer = new IntersectionObserver(
+    (entries) =>
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        observer.unobserve(entry.target);
+        stampScene(entry.target as HTMLElement);
+      }),
+    { rootMargin: "900px 0px" },
+  );
+  hosts.forEach((host) => observer.observe(host));
+}
+
 export function initScenes(root: ParentNode = document) {
   root.querySelectorAll<HTMLElement>("[data-scene]").forEach(initScene);
+  lazyScenes(root);
   if (!prefersReducedMotion()) {
     window.addEventListener("scroll", requestTick, { passive: true });
     window.addEventListener("resize", requestTick);

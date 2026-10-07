@@ -454,7 +454,7 @@ const glitter = Array.from({ length: 30 }, () => ({
 </style>
 
 <script>
-  import { initScene } from "../../scripts/scenes";
+  import { stampScene } from "../../scripts/scenes";
 
   const hero =document.querySelector<HTMLElement>("[data-hero]");
   const mount = hero?.querySelector<HTMLElement>("[data-hero-3d]");
@@ -473,7 +473,7 @@ const glitter = Array.from({ length: 30 }, () => ({
     if (tpl) {
       const parent = tpl.parentElement;
       tpl.replaceWith(tpl.content);
-      parent?.querySelectorAll<HTMLElement>("[data-scene]").forEach((el) => initScene(el));
+      parent?.querySelectorAll<HTMLElement>("[data-lazy-scene-host]").forEach((el) => stampScene(el));
     }
     hero?.classList.add("is-fallback");
     reveal();
