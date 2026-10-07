@@ -61,18 +61,29 @@ export interface CityController {
 /** Hand control back to the browser between build stages so the page keeps animating. */
 const yieldToBrowser = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
+let hasWebGL: boolean | null = null;
+/** Checked once per page; the throw-away test context is released straight away. */
 export function webglAvailable() {
+  if (hasWebGL !== null) return hasWebGL;
   try {
     const canvas = document.createElement("canvas");
-    return !!(canvas.getContext("webgl2") || canvas.getContext("webgl"));
+    const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+    hasWebGL = !!gl;
   } catch {
-    return false;
+    hasWebGL = false;
   }
+  return hasWebGL;
 }
 
 // ---------- Layout (world units; −z = north, +x = east) ----------
+// Follows the architect's aerial masterplan (top of the render = north): Katunayake–Veyangoda Road
+// along the north-west edge, the City Gate and the Miracle Dome beside it, the fan-shaped crusade
+// grounds (Zion) opening north from the glass dome stage, a river winding past, and the car park
+// across the river. Carmel Hill is the "Prayer Mountain" of the labelled plan: a low landscaped
+// mound between the Miracle Dome and the accommodation blocks, crowned by a glass geodesic dome.
 // Carmel Hill: flat summit (prayer plaza) of radius `top`, broad landscaped slopes out to `base`.
-const HILL = { x: 0, z: -40, h: 40, top: 10, base: 74 };
+const HILL = { x: -54, z: -47, h: 7, top: 15, base: 32 };
 /** Distance from the hill centre, with a gently irregular outline so it reads as a natural hill. */
 const hillDist = (x: number, z: number) => {
   const dx = x - HILL.x;
@@ -84,20 +95,111 @@ const hillDist = (x: number, z: number) => {
 };
 /** Hill profile: a steeper upper cone onto a gentle skirt, with a level summit. */
 const hillHeight = (r: number) =>
-  HILL.h * (0.62 * (1 - smoothstep(HILL.top, 46, r)) + 0.38 * (1 - smoothstep(HILL.top, HILL.base, r)));
-const ZION = { x: 48, z: 26 };
-const FACILITY = { x: -64, z: 8 };
-// Car park: lot of LOT.w × LOT.d, east of Zion Grounds, entered from the main road to the south.
-const CARPARK = { x: 140, z: 22 };
-const LOT = { w: 56, d: 40 };
-// The Miracle Dome: beside Carmel Hill (east side), entrance facing south towards the city.
-const DOME = { x: 110, z: -45, rx: 30, rz: 22.4 };
-const FLAT_ZONES = [
-  { x: DOME.x, z: DOME.z, rx: 50, rz: 38 },
-  { x: ZION.x, z: ZION.z, rx: 62, rz: 44 },
-  { x: FACILITY.x, z: FACILITY.z, rx: 40, rz: 28 },
-  { x: CARPARK.x, z: CARPARK.z, rx: 40, rz: 29 },
+  HILL.h * (0.62 * (1 - smoothstep(HILL.top, HILL.top + (HILL.base - HILL.top) * 0.56, r)) + 0.38 * (1 - smoothstep(HILL.top, HILL.base, r)));
+
+// Main road direction (SW → NE) and the inward normal (into the site, south-east).
+const ROAD_DIR = new THREE.Vector2(0.867, -0.498);
+const ROAD_IN = new THREE.Vector2(0.498, 0.867);
+const ROAD_YAW = Math.atan2(-ROAD_DIR.y, ROAD_DIR.x); // rotation.y that turns local +x along the road
+
+// City Gate: long lit façade parallel to the road, its front (local −z) facing the road.
+const GATE = { x: -80, z: -86, w: 42, d: 7, h: 12 };
+// The Miracle Dome (existing): oval hall, long axis NNW–SSE, glass entrance facing NE towards the gate.
+const DOME = { x: -98, z: -24, rx: 30, rz: 22.4, yaw: -0.884 };
+// Gold crescent walk curving round the Dome's south-east side (world angles, radians).
+const CRESCENT = { r0: 44, r1: 49, a0: 0.07, a1: 1.91 };
+// The Prayer Mountain's glass geodesic dome, on the summit of Carmel Hill.
+const PAVILION = { x: HILL.x, z: HILL.z, r: 11 };
+// 1,500-bed facility: Accommodation Buildings 2 and 3, the gold-roofed blocks north of the grounds
+// (Building 1, with the museum, is the long City Gate building on the road).
+const FACILITY = { x: -27, z: -67 };
+const FACILITY_BLOCKS = [
+  { x: -38.4, z: -77.9, w: 26, d: 15, h: 13, yaw: -0.56, seed: 1 },
+  { x: -16, z: -55.5, w: 22, d: 16, h: 11, yaw: -0.7, seed: 2 },
 ];
+// Zion Grounds (crusade grounds): the glass dome stage, a paved forecourt, and a fan of terraced
+// lawns rising north from it between the angles FAN.a0 and FAN.a1 (world atan2(dz, dx)).
+const ZION = { x: 22, z: 25 }; // fan apex / centre of the forecourt
+const STAGE = { x: 24, z: 34, r: 10 };
+const FAN = { a0: -2.612, a1: -0.535, plaza: 18, rise: 9, rims: [[-2.612, 76], [-1.231, 96], [-0.535, 100]] as const };
+/** Far edge of the fan at angle `a` (linear between the sampled rims). */
+const fanRim = (a: number) => {
+  const r = FAN.rims;
+  const c = Math.min(FAN.a1, Math.max(FAN.a0, a));
+  if (c <= r[1][0]) return r[0][1] + ((c - r[0][0]) / (r[1][0] - r[0][0])) * (r[1][1] - r[0][1]);
+  return r[1][1] + ((c - r[1][0]) / (r[2][0] - r[1][0])) * (r[2][1] - r[1][1]);
+};
+/** Fan coordinates of a point: radius from the apex, angle, and how far outside the fan's sides it is. */
+const fanCoords = (x: number, z: number) => {
+  const dx = x - ZION.x;
+  const dz = z - ZION.z;
+  const r = Math.hypot(dx, dz);
+  const a = Math.atan2(dz, dx);
+  const out = Math.max(FAN.a0 - a, a - FAN.a1, 0) * r; // arc length outside the sides
+  return { r, a, out, rim: fanRim(a) };
+};
+/** 1 on the terraced lawns of the fan, 0 outside. */
+const fanMask = (x: number, z: number) => {
+  const f = fanCoords(x, z);
+  return smoothstep(FAN.plaza - 2, FAN.plaza + 2, f.r) * (1 - smoothstep(f.rim - 3, f.rim + 1, f.r)) * (1 - smoothstep(0, 2, f.out));
+};
+/** The grounds are cut into a hillside: seats rise from the stage to the rim, then the land falls away. */
+const bowlHeight = (x: number, z: number) => {
+  const f = fanCoords(x, z);
+  const rr = f.r / f.rim;
+  const prof = smoothstep(FAN.plaza / f.rim, 1, rr) * (1 - smoothstep(1, 1.45, rr));
+  return FAN.rise * prof * (1 - smoothstep(0, 35, f.out));
+};
+// River winding past the stage (south) and the Dome, between the grounds and the car park.
+const RIVER = [
+  [-240, 64], [-160, 55], [-120, 59.7], [-83, 47], [-64, 37.3], [-32, 35.7], [-8, 47], [8, 55], [40, 53.3],
+  [72, 47], [88, 29.3], [89.6, 5.3], [104, -10.7], [128, -23.5], [160, -31.5], [230, -46],
+].map(([x, z]) => new THREE.Vector2(x, z));
+const RIVER_HALF = 5.5;
+const RIVER_LEN = RIVER.slice(1).map((p, i) => p.distanceTo(RIVER[i]));
+const RIVER_TOTAL = RIVER_LEN.reduce((s, l) => s + l, 0);
+/** Distance to the river's centreline, plus how far along it (0–1) that closest point is. */
+const FAR = { d: Infinity, at: 0.5 };
+function riverInfo(x: number, z: number) {
+  // Quick reject: most of the landscape is nowhere near the river.
+  if (x < -255 || x > 245 || z < -65 || z > 80) return FAR;
+  let best = Infinity;
+  let at = 0;
+  let acc = 0;
+  for (let i = 0; i < RIVER.length - 1; i++) {
+    const a = RIVER[i];
+    const b = RIVER[i + 1];
+    const abx = b.x - a.x;
+    const abz = b.y - a.y;
+    const len = RIVER_LEN[i];
+    const t = Math.min(1, Math.max(0, ((x - a.x) * abx + (z - a.y) * abz) / (len * len)));
+    const d = Math.hypot(x - (a.x + abx * t), z - (a.y + abz * t));
+    if (d < best) {
+      best = d;
+      at = (acc + t * len) / RIVER_TOTAL;
+    }
+    acc += len;
+  }
+  return { d: best, at };
+}
+/** 1 in the river, 0 on land; the river narrows away into the woods at both ends. */
+function riverMask(x: number, z: number) {
+  const { d, at } = riverInfo(x, z);
+  const half = RIVER_HALF * smoothstep(0, 0.12, at) * (1 - smoothstep(0.88, 1, at));
+  return 1 - smoothstep(half - 1.2, half + 0.8, d);
+}
+// Car park: lot of LOT.w × LOT.d across the river from the grounds (footbridge to the stage forecourt).
+const CARPARK = { x: 14, z: 76 };
+const LOT = { w: 140, d: 26 };
+const FLAT_ZONES = [
+  { x: DOME.x, z: DOME.z, rx: 41, rz: 36 },
+  { x: -112, z: -64, rx: 24, rz: 15 }, // forecourt between the road and the Dome
+  { x: GATE.x, z: GATE.z, rx: 30, rz: 20 },
+  { x: FACILITY.x, z: FACILITY.z, rx: 32, rz: 27 },
+  { x: ZION.x, z: ZION.z + 2, rx: 26, rz: 26 }, // stage forecourt
+];
+// Rectangular flat zones (half sizes): the car park lot.
+const FLAT_RECTS = [{ x: CARPARK.x, z: CARPARK.z, hw: LOT.w / 2 + 2, hd: LOT.d / 2 + 2 }];
 // Runway 04/22 runs NE–SW (bearing ≈ 40°), south-west of the site.
 const RUNWAY = { cx: -250, cz: 235, len: 300, width: 12, dir: new THREE.Vector3(Math.sin(0.7), 0, -Math.cos(0.7)) };
 const FTZ = { x: -205, z: 95 }; // Katunayake Free Trade Zone, beside the airport
@@ -117,6 +219,10 @@ function flatness(x: number, z: number) {
     const d = Math.hypot((x - zone.x) / zone.rx, (z - zone.z) / zone.rz);
     f = Math.max(f, 1 - smoothstep(0.75, 1.05, d));
   }
+  for (const r of FLAT_RECTS) {
+    const d = Math.hypot(Math.max(Math.abs(x - r.x) - r.hw, 0), Math.max(Math.abs(z - r.z) - r.hd, 0));
+    f = Math.max(f, 1 - smoothstep(1, 8, d));
+  }
   return f;
 }
 
@@ -134,6 +240,7 @@ const coastX = (z: number) => -450 + 26 * Math.sin(z * 0.008) + 12 * Math.sin(z 
 
 /** Negombo Lagoon (north) incl. its channel to the sea near Negombo: 0 = land, 1 = open water. */
 function lagoonMask(x: number, z: number) {
+  if (z > -110) return 0; // the lagoon (and its channel) lies well north of this line
   const ax = (x + 130) / 270;
   const az = (z + 255) / 115;
   const wobble = 0.12 * Math.sin(x * 0.03) + 0.1 * Math.cos(z * 0.04 + x * 0.01);
@@ -161,12 +268,12 @@ function terrainHeight(x: number, z: number) {
   // The central hill country, far inland to the east, as a hazy line on the horizon.
   const hillCountry =
     smoothstep(430, 620, x) * (1 - smoothstep(650, 695, x)) * (36 + 18 * Math.sin(z * 0.012) + 10 * Math.sin(z * 0.031 + x * 0.01));
-  let h = base + hill + hillCountry;
+  let h = base + hill + hillCountry + bowlHeight(x, z);
   const flat = flatness(x, z);
   h = h * (1 - flat) + 0.2 * flat;
   const air = airportMask(x, z);
   h = h * (1 - air) + 0.45 * air;
-  const water = Math.max(lagoonMask(x, z), oceanMask(x, z));
+  const water = Math.max(lagoonMask(x, z), oceanMask(x, z), riverMask(x, z));
   return h * (1 - water) + -3 * water;
 }
 
@@ -182,12 +289,11 @@ function rng(seed: number) {
 
 // Paddy field patchworks: centre, size in cells, rotation.
 const PADDIES = [
-  { x: 230, z: -125, cols: 10, rows: 8, a: 0.3 },
+  { x: 240, z: -125, cols: 9, rows: 8, a: 0.3 },
   { x: 125, z: 175, cols: 9, rows: 6, a: -0.2 },
   { x: -45, z: 205, cols: 7, rows: 5, a: 0.1 },
   { x: 335, z: 125, cols: 8, rows: 6, a: 0.5 },
-  { x: -170, z: -75, cols: 6, rows: 5, a: 0 },
-  { x: 120, z: -200, cols: 8, rows: 4, a: -0.15 },
+  { x: 300, z: -230, cols: 8, rows: 4, a: -0.15 },
 ];
 const CELL = { w: 16, d: 11, gap: 1.4 };
 
@@ -209,7 +315,20 @@ function freeLand(x: number, z: number) {
   if (flatness(x, z) > 0.02 || airportMask(x, z) > 0.02 || inPaddy(x, z)) return false;
   if (Math.hypot(x - FTZ.x, z - FTZ.z) < 55) return false;
   if (hillDist(x, z) < HILL.base + 4) return false; // Carmel Hill is landscaped separately
+  if (riverInfo(x, z).d < RIVER_HALF + 2.5) return false;
+  if (inCrescent(x, z, 3)) return false;
+  // The terraced lawns keep only a scattering of shade trees (as in the renders).
+  if (fanMask(x, z) > 0.02 && ((x * 7.31 + z * 3.17) % 1 + 1) % 1 > 0.07) return false;
   return true;
+}
+
+/** Points on (or within `pad` of) the gold crescent walk around the Dome. */
+function inCrescent(x: number, z: number, pad = 0) {
+  const dx = x - DOME.x;
+  const dz = z - DOME.z;
+  const r = Math.hypot(dx, dz);
+  const a = Math.atan2(dz, dx);
+  return r > CRESCENT.r0 - pad && r < CRESCENT.r1 + pad && a > CRESCENT.a0 - pad / r && a < CRESCENT.a1 + pad / r;
 }
 
 // ---------- Shaders & textures ----------
@@ -456,9 +575,33 @@ function addSway(mat: THREE.Material, time: { value: number }, amount: number, h
 }
 
 // ---------- Scene ----------
+/**
+ * One city for the whole page. The hero and the Explore map never show at the same time, so they
+ * share a single scene, renderer and canvas: the first call builds it, later calls attach another
+ * view, and the canvas moves to whichever section is on screen. (Two separate cities doubled the
+ * loading work and graphics memory, which made phones lag.)
+ */
+let shared: Promise<{ controller: CityController; attach: (o: CityOptions) => CityController }> | null = null;
+
 export async function createCity3D(opts: CityOptions): Promise<CityController> {
-  const { container, spots, markers, reducedMotion } = opts;
-  const labels = opts.labels ?? [];
+  if (shared) {
+    try {
+      return (await shared).attach(opts);
+    } catch {
+      shared = null; // the first build failed; try a fresh one for this view
+    }
+  }
+  shared = buildCity(opts);
+  try {
+    return (await shared).controller;
+  } catch (err) {
+    shared = null;
+    throw err;
+  }
+}
+
+async function buildCity(opts: CityOptions) {
+  const { reducedMotion } = opts;
   const mobile = window.matchMedia("(pointer: coarse)").matches;
   // Phones and modest computers (≤4 cores or ≤4 GB) get the light tier: fewer trees/houses,
   // native-resolution rendering and 30 fps. Everyone else renders at up to 1.5× resolution.
@@ -476,9 +619,37 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
   renderer.toneMappingExposure = 1.08;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.domElement.className = "city3d__canvas";
-  const cinematic = !!opts.cinematic;
+
+  // A "view" = one section showing the city: its container, camera behaviour and overlays.
+  interface View {
+    container: HTMLElement;
+    cinematic: boolean;
+    markers: Map<string, HTMLElement>;
+    labels: CityLabel[];
+    labelPositions: THREE.Vector3[];
+    anchors: Map<string, THREE.Vector3>;
+    onHover: (id: string | null) => void;
+    onSelect: (id: string) => void;
+    visible: boolean;
+    saved?: { pos: THREE.Vector3; target: THREE.Vector3 };
+  }
+  const makeView = (o: CityOptions): View => ({
+    container: o.container,
+    cinematic: !!o.cinematic,
+    markers: o.markers,
+    labels: o.labels ?? [],
+    labelPositions: (o.labels ?? []).map((l) => new THREE.Vector3(...l.pos)),
+    anchors: new Map(o.spots.map((s) => [s.id, new THREE.Vector3(...s.anchor)])),
+    onHover: o.onHover,
+    onSelect: o.onSelect,
+    visible: false,
+  });
+  const views: View[] = [makeView(opts)];
+  let view = views[0];
+  view.visible = true; // until the first visibility check comes in
+  let cinematic = view.cinematic;
   if (cinematic) renderer.domElement.style.pointerEvents = "none";
-  container.append(renderer.domElement);
+  view.container.append(renderer.domElement);
 
   const scene = new THREE.Scene();
   // Warm, humid coastal haze.
@@ -486,10 +657,10 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
   scene.fog = fog;
 
   const camera = new THREE.PerspectiveCamera(38, 1, 1, 3000);
-  // Establishing shot from the south-east, looking north-west: the city in front,
-  // Carmel Hill and the lagoon behind, the sun setting over the ocean on the left.
-  // Framed so all five places (facility, Carmel Hill, Miracle Dome, Zion, car park) are in view.
-  const HOME = { pos: new THREE.Vector3(215, 84, 230), target: new THREE.Vector3(18, 28, -40) };
+  // Establishing shot from the south-east, looking north-west: the car park and river in front, the
+  // crusade grounds rising behind the dome stage, the Miracle Dome, facility and City Gate beyond,
+  // Carmel Hill to the right and the sun setting over the ocean on the left.
+  const HOME = { pos: new THREE.Vector3(170, 82, 215), target: new THREE.Vector3(-22, 8, -24) };
   camera.position.copy(HOME.pos);
 
   const timeUniforms: { value: number }[] = [];
@@ -570,6 +741,8 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     const lawnA = new THREE.Color("#355523");
     const lawnB = new THREE.Color("#5f8738");
     const stone = new THREE.Color("#b9ae97");
+    const earth = new THREE.Color("#5a3826");
+    const bank = new THREE.Color("#5d5a4e");
     const c = new THREE.Color();
     for (let i = 0; i < p.count; i++) {
       const x = p.getX(i);
@@ -584,6 +757,15 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
         c.lerp(lawnA.clone().lerp(lawnB, smoothstep(0.42, 0.58, band)), 1 - smoothstep(HILL.base - 10, HILL.base + 8, hr));
         c.lerp(stone, 1 - smoothstep(HILL.top - 0.5, HILL.top + 1.5, hr));
       }
+      // Crusade grounds: reddish earth between bands of lawn (the terraces), as in the renders.
+      const fan = fanMask(x, z);
+      if (fan > 0) {
+        const terrace = 0.5 + 0.5 * Math.sin(fanCoords(x, z).r * 0.55);
+        c.lerp(earth.clone().lerp(lawnA, smoothstep(0.55, 0.8, terrace) * 0.7), fan * 0.92);
+      }
+      // Rocky river banks.
+      const rd = riverInfo(x, z).d;
+      if (rd < RIVER_HALF + 4) c.lerp(bank, 1 - smoothstep(RIVER_HALF + 1, RIVER_HALF + 4, rd));
       const shore = x - coastX(z);
       if (shore > -4 && shore < 16) c.lerp(sand, 1 - smoothstep(8, 16, shore));
       const lag = lagoonMask(x, z);
@@ -742,33 +924,6 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     shrubs.count = ns;
     landmarks.add(shrubs);
 
-    // Open prayer pavilion on a landing halfway up the walkway.
-    {
-      const i = Math.round(pathPoints.length * 0.42);
-      const p = pathPoints[i];
-      const out = new THREE.Vector3(p.x - HILL.x, 0, p.z - HILL.z).normalize();
-      const px = p.x + out.x * 6.5;
-      const pz = p.z + out.z * 6.5;
-      const py = Math.max(terrainHeight(px, pz), p.y);
-      const pavilion = new THREE.Group();
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 5, 1.2, 24), stoneMat);
-      base.position.y = 0.3;
-      pavilion.add(base);
-      for (let k = 0; k < 8; k++) {
-        const a = (k / 8) * Math.PI * 2;
-        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 3.4, 8), stoneMat);
-        col.position.set(Math.sin(a) * 3.7, 2.6, Math.cos(a) * 3.7);
-        pavilion.add(col);
-      }
-      const roof = new THREE.Mesh(new THREE.ConeGeometry(5.2, 2.6, 8), new THREE.MeshStandardMaterial({ color: 0xa8492b, roughness: 0.8 }));
-      roof.position.y = 5.5;
-      pavilion.add(roof);
-      pavilion.position.set(px, py, pz);
-      landmarks.add(pavilion);
-      addGlow(new THREE.Vector3(px, py + 2.4, pz), 12, 0.5);
-      addLights(lightPoints([px, py + 3.6, pz], [2.6, 1.9, 1.0], 3, 0.1, pixelRatio));
-    }
-
     // Coconut palms ringing the foot of the hill.
     const palmMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide });
     addSway(palmMat, time, reducedMotion ? 0 : 0.3, 8);
@@ -801,85 +956,141 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     }
     addLights(lightPoints(parapetPos, parapetCol, 0.9, 0.2, pixelRatio));
 
-    // Stepped plinth and the cross.
-    let y = peakY + 0.5;
-    for (const [w, hgt] of [[6, 0.6], [4.4, 0.6], [3, 0.7]] as const) {
-      const step = new THREE.Mesh(new THREE.BoxGeometry(w, hgt, w), stoneMat);
-      step.position.set(HILL.x, y + hgt / 2, HILL.z);
-      landmarks.add(step);
-      y += hgt;
-    }
-    const crossMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff0cf, emissiveIntensity: 1.35, roughness: 0.4 });
-    const cross = new THREE.Group();
-    const v = new THREE.Mesh(new THREE.BoxGeometry(1.1, 16, 1.1), crossMat);
-    v.position.y = 8;
-    const h = new THREE.Mesh(new THREE.BoxGeometry(8, 1.1, 1.1), crossMat);
-    h.position.y = 11.6;
-    cross.add(v, h);
-    cross.position.set(HILL.x, y, HILL.z);
-    landmarks.add(cross);
-    addGlow(new THREE.Vector3(HILL.x, y + 2, HILL.z), 16, 0.35);
-    const light = new THREE.PointLight(0xffd9a0, 700, 90, 2);
-    light.position.set(HILL.x, y + 13, HILL.z);
+    // The Prayer Mountain's glass geodesic dome on the summit (lit warm red inside), as in the renders.
+    const geo = new THREE.IcosahedronGeometry(PAVILION.r, 2);
+    const shell = new THREE.Mesh(
+      geo,
+      new THREE.MeshStandardMaterial({ color: 0xb87482, emissive: 0x7a2232, emissiveIntensity: 0.9, roughness: 0.15, metalness: 0.3, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false }),
+    );
+    shell.position.set(PAVILION.x, peakY + 0.4, PAVILION.z);
+    const lines = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 1), new THREE.LineBasicMaterial({ color: new THREE.Color(2.1, 1.8, 1.4) }));
+    lines.position.copy(shell.position);
+    landmarks.add(shell, lines);
+    addGlow(new THREE.Vector3(PAVILION.x, peakY + 4, PAVILION.z), 22, 0.5);
+    const light = new THREE.PointLight(0xff8a7a, 260, 40, 2);
+    light.position.set(PAVILION.x, peakY + 5, PAVILION.z);
     landmarks.add(light);
 
-    pickProxy("carmel", new THREE.SphereGeometry(28, 12, 8), new THREE.Vector3(HILL.x, peakY - 14, HILL.z));
+    pickProxy("carmel", new THREE.SphereGeometry(HILL.top + 6, 16, 10), new THREE.Vector3(HILL.x, peakY, HILL.z));
   }
 
   await yieldToBrowser();
-  // Zion Grounds: elliptical bowl, glowing crowd, stage and light beam
+  // Zion Grounds — the crusade grounds, as in the renders: terraced lawns fanning out north from a
+  // glass geodesic dome stage, a paved forecourt, radial walkways with lamps, the crowd, floodlights.
   {
-    const profile = [
-      [0, 0.3], [22, 0.6], [23, 1.4], [33, 7], [35, 7.6], [36.5, 7.2], [37, 0],
-    ].map(([r, y]) => new THREE.Vector2(r, y));
-    const bowl = new THREE.Mesh(
-      new THREE.LatheGeometry(profile, 96),
-      new THREE.MeshStandardMaterial({ color: 0xd8cdbb, roughness: 0.75, side: THREE.DoubleSide }),
+    const forecourt = new THREE.Mesh(new THREE.CircleGeometry(FAN.plaza + 1, 72).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x8c8780, roughness: 0.9 }));
+    forecourt.position.set(ZION.x, 0.34, ZION.z);
+    landmarks.add(forecourt);
+
+    // The stage: a glass geodesic dome (lower half below ground) with a lit frame.
+    const domeGeo = new THREE.IcosahedronGeometry(STAGE.r, 2);
+    const shell = new THREE.Mesh(
+      domeGeo,
+      new THREE.MeshStandardMaterial({ color: 0xc7a6c6, emissive: 0x5a3456, emissiveIntensity: 0.7, roughness: 0.12, metalness: 0.35, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false }),
     );
-    bowl.scale.set(1.5, 1, 1);
-    bowl.position.set(ZION.x, 0, ZION.z);
-    landmarks.add(bowl);
+    shell.position.set(STAGE.x, 0.25, STAGE.z);
+    const frame = new THREE.LineSegments(new THREE.EdgesGeometry(domeGeo, 1), new THREE.LineBasicMaterial({ color: new THREE.Color(2.3, 2.0, 1.6) }));
+    frame.position.copy(shell.position);
+    landmarks.add(shell, frame);
 
-    const floorTex = canvasTexture(256, 256, (ctx) => {
-      const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-      g.addColorStop(0, "#ffe2a6");
-      g.addColorStop(0.35, "#b97a3e");
-      g.addColorStop(1, "#3a2817");
+    // Stage deck, LED screen and the choir inside, facing the grounds (north).
+    const deck = new THREE.Mesh(new THREE.CylinderGeometry(STAGE.r - 2, STAGE.r - 1.4, 1.4, 48), new THREE.MeshStandardMaterial({ color: 0x2a292d, roughness: 0.7 }));
+    deck.position.set(STAGE.x, 0.95, STAGE.z);
+    landmarks.add(deck);
+    const screenTex = canvasTexture(256, 128, (ctx) => {
+      const g = ctx.createLinearGradient(0, 0, 256, 128);
+      g.addColorStop(0, "#3b2a6e");
+      g.addColorStop(0.5, "#e2763a");
+      g.addColorStop(1, "#ffd28a");
       ctx.fillStyle = g;
-      ctx.fillRect(0, 0, 256, 256);
+      ctx.fillRect(0, 0, 256, 128);
+      ctx.fillStyle = "rgba(255,248,230,0.55)";
+      for (let k = 0; k < 9; k++) {
+        ctx.beginPath();
+        ctx.moveTo(128, 18);
+        ctx.lineTo(k * 32 - 6, 128);
+        ctx.lineTo(k * 32 + 6, 128);
+        ctx.fill();
+      }
     });
-    const floor = new THREE.Mesh(new THREE.CircleGeometry(22.6, 64), new THREE.MeshBasicMaterial({ map: floorTex }));
-    floor.rotation.x = -Math.PI / 2;
-    floor.scale.set(1.5, 1, 1);
-    floor.position.set(ZION.x, 0.75, ZION.z);
-    landmarks.add(floor);
+    const screen = new THREE.Mesh(new THREE.PlaneGeometry(12, 5.2), new THREE.MeshBasicMaterial({ map: screenTex, color: new THREE.Color(1.5, 1.5, 1.5) }));
+    screen.position.set(STAGE.x, 5.4, STAGE.z + 4.2);
+    screen.rotation.y = Math.PI; // face the audience to the north
+    landmarks.add(screen);
+    {
+      const pos: number[] = [];
+      const col: number[] = [];
+      for (let row = 0; row < 3; row++)
+        for (let k = 0; k < 16; k++) {
+          pos.push(STAGE.x - 6 + k * 0.8, 2.3 + row * 0.5, STAGE.z + 1 + row * 0.9);
+          col.push(2.2, 2.1, 1.9);
+        }
+      addLights(lightPoints(pos, col, 0.7, 0.3, pixelRatio));
+    }
+    addGlow(new THREE.Vector3(STAGE.x, 4, STAGE.z), 30, 0.75);
+    const stageLight = new THREE.PointLight(0xffc9a0, 500, 70, 2);
+    stageLight.position.set(STAGE.x, 8, STAGE.z - 3);
+    landmarks.add(stageLight);
 
+    // Radial walkways from the forecourt up through the terraces, with lamps.
+    const span = FAN.a1 - FAN.a0;
+    const walkAngles = [FAN.a0 + 0.03, FAN.a0 + span * 0.28, FAN.a0 + span * 0.55, FAN.a0 + span * 0.8, FAN.a1 - 0.03];
+    const walkMat = new THREE.MeshStandardMaterial({ color: 0xb4ab9a, roughness: 0.9 });
+    const lampPos: number[] = [];
+    const lampCol: number[] = [];
+    for (const a of walkAngles) {
+      const dir = new THREE.Vector2(Math.cos(a), Math.sin(a));
+      const side = new THREE.Vector2(-dir.y, dir.x);
+      const end = fanRim(a) + 3;
+      const verts: number[] = [];
+      const idx: number[] = [];
+      const STEPS = Math.round((end - FAN.plaza) / 1.5);
+      for (let i = 0; i <= STEPS; i++) {
+        const r = FAN.plaza + ((end - FAN.plaza) * i) / STEPS;
+        for (const s of [-1, 1]) {
+          const x = ZION.x + dir.x * r + side.x * 1.3 * s;
+          const z = ZION.z + dir.y * r + side.y * 1.3 * s;
+          verts.push(x, terrainHeight(x, z) + 0.3, z);
+        }
+        if (i < STEPS) idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
+        if (i % 6 === 3) {
+          const x = ZION.x + dir.x * r + side.x * 2;
+          const z = ZION.z + dir.y * r + side.y * 2;
+          lampPos.push(x, terrainHeight(x, z) + 2.6, z);
+          lampCol.push(2.6, 1.9, 1.0);
+        }
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+      landmarks.add(new THREE.Mesh(geo, walkMat));
+    }
+    addLights(lightPoints(lampPos, lampCol, 1.6, 0.15, pixelRatio));
+
+    // The multitudes on the terraces (and gathered in front of the stage).
     const pos: number[] = [];
     const col: number[] = [];
-    for (let i = 0; i < 4200; i++) {
-      const a = rand() * Math.PI * 2;
-      const d = 0.16 + Math.sqrt(rand()) * 0.82;
-      pos.push(ZION.x + Math.cos(a) * 33 * d, 1.2, ZION.z + Math.sin(a) * 22 * d);
+    for (let i = 0; i < 5200; i++) {
+      let x: number;
+      let z: number;
+      if (i < 500) {
+        const a = -Math.PI + rand() * Math.PI;
+        const r = 4 + rand() * (FAN.plaza - 5);
+        x = ZION.x + Math.cos(a) * r;
+        z = ZION.z + Math.sin(a) * r;
+      } else {
+        const a = FAN.a0 + rand() * span;
+        const r = FAN.plaza + 2 + Math.sqrt(rand()) * (fanRim(a) - FAN.plaza - 5);
+        if (walkAngles.some((w) => Math.abs(w - a) * r < 2.2)) continue;
+        x = ZION.x + Math.cos(a) * r;
+        z = ZION.z + Math.sin(a) * r;
+      }
+      pos.push(x, terrainHeight(x, z) + 1.1, z);
       const w = rand();
       col.push(1.4 + w * 0.8, 0.9 + w * 0.6, 0.45 + w * 0.4);
     }
     addLights(lightPoints(pos, col, 0.75, 1, pixelRatio));
-
-    const rimPos: number[] = [];
-    const rimCol: number[] = [];
-    for (let i = 0; i < 140; i++) {
-      const a = (i / 140) * Math.PI * 2;
-      rimPos.push(ZION.x + Math.cos(a) * 52.5, 7.9, ZION.z + Math.sin(a) * 35);
-      rimCol.push(2.4, 1.9, 1.1);
-    }
-    addLights(lightPoints(rimPos, rimCol, 1.4, 0.3, pixelRatio));
-
-    const stage = new THREE.Mesh(
-      new THREE.CylinderGeometry(3.2, 3.6, 1.6, 32),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff2d6, emissiveIntensity: 2.4 }),
-    );
-    stage.position.set(ZION.x, 1.4, ZION.z);
-    landmarks.add(stage);
 
     const beamMat = new THREE.ShaderMaterial({
       transparent: true,
@@ -899,26 +1110,179 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     timeUniforms.push(beamMat.uniforms.uTime);
     beamFade = beamMat.uniforms.uFade;
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(11, 1.6, 170, 32, 1, true), beamMat);
-    beam.position.set(ZION.x, 86, ZION.z);
+    beam.position.set(STAGE.x, 86, STAGE.z);
     landmarks.add(beam);
-    addGlow(new THREE.Vector3(ZION.x, 4, ZION.z), 34, 0.8);
 
+    // Floodlight towers along the top of the grounds, aimed at the stage.
     const poleMat = new THREE.MeshStandardMaterial({ color: 0x1b1b1f, roughness: 0.6 });
     const headMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff4dc, emissiveIntensity: 3 });
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2 + 0.2;
-      const x = ZION.x + Math.cos(a) * 60;
-      const z = ZION.z + Math.sin(a) * 42;
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 24, 8), poleMat);
-      pole.position.set(x, 12, z);
+    for (let i = 0; i < 7; i++) {
+      const a = FAN.a0 + 0.12 + ((span - 0.24) * i) / 6;
+      const r = fanRim(a) + 4;
+      const x = ZION.x + Math.cos(a) * r;
+      const z = ZION.z + Math.sin(a) * r;
+      const y0 = terrainHeight(x, z);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 22, 8), poleMat);
+      pole.position.set(x, y0 + 11, z);
       const head = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.4, 0.8), headMat);
-      head.position.set(x, 24.5, z);
-      head.lookAt(ZION.x, 0, ZION.z);
+      head.position.set(x, y0 + 22.5, z);
+      head.lookAt(STAGE.x, 0, STAGE.z);
       landmarks.add(pole, head);
-      addGlow(head.position, 9, 0.55);
+      addGlow(head.position, 7, 0.4);
     }
-    pickProxy("zion", new THREE.CylinderGeometry(38, 38, 12, 24).scale(1.5, 1, 1), new THREE.Vector3(ZION.x, 5, ZION.z));
+    // Pick area: the whole fan (CylinderGeometry θ runs from +z towards +x, i.e. θ = π/2 − angle).
+    pickProxy("zion", new THREE.CylinderGeometry(98, 98, 22, 32, 1, false, Math.PI / 2 - FAN.a1, span), new THREE.Vector3(ZION.x, 6, ZION.z));
+    pickProxy("zion", new THREE.SphereGeometry(STAGE.r + 4, 16, 10), new THREE.Vector3(STAGE.x, 2, STAGE.z));
+
+    // Footbridge from the forecourt over the river to the car park.
+    {
+      const p0 = new THREE.Vector2(13, 41);
+      const p1 = new THREE.Vector2(8, 63);
+      const len = p0.distanceTo(p1);
+      const yaw = Math.atan2(p1.x - p0.x, p1.y - p0.y);
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.7, len), new THREE.MeshStandardMaterial({ color: 0x8c8780, roughness: 0.85 }));
+      deck.position.set((p0.x + p1.x) / 2, 1.3, (p0.y + p1.y) / 2);
+      deck.rotation.y = yaw;
+      landmarks.add(deck);
+      const rail: number[] = [];
+      const railCol: number[] = [];
+      for (let k = 0; k <= 10; k++) {
+        const t = k / 10;
+        for (const s of [-1, 1]) {
+          rail.push(p0.x + (p1.x - p0.x) * t + Math.cos(yaw) * 1.8 * s, 2.3, p0.y + (p1.y - p0.y) * t - Math.sin(yaw) * 1.8 * s);
+          railCol.push(2.4, 1.8, 1.0);
+        }
+      }
+      addLights(lightPoints(rail, railCol, 1, 0.2, pixelRatio));
+    }
   }
+
+  await yieldToBrowser();
+  // City Gate: a long façade of lit hexagonal stone panels along the road, a glass entrance in the
+  // middle and a drive-through arch either side; bronze lions and a globe in a fountain in front.
+  {
+    const g = new THREE.Group();
+    g.position.set(GATE.x, 0.2, GATE.z);
+    g.rotation.y = ROAD_YAW;
+    landmarks.add(g);
+    g.updateMatrixWorld(true);
+    const PX = 24;
+    const W = GATE.w * PX;
+    const H = GATE.h * PX;
+    // Openings in façade-local units (x from the centre): [centre x, bottom half-width, top half-width, height].
+    const openings = [
+      [0, 6.5, 3.4, 8.6],
+      [-13.5, 4, 2.2, 6.4],
+      [13.5, 4, 2.2, 6.4],
+    ] as const;
+    const draw = (emissive: boolean, sign: boolean) => (ctx: CanvasRenderingContext2D) => {
+      const X = (x: number) => (x + GATE.w / 2) * PX;
+      const Y = (y: number) => H - y * PX;
+      ctx.fillStyle = emissive ? "#000" : "#7d6c50";
+      ctx.fillRect(0, 0, W, H);
+      // Hexagon panels.
+      const R = 1.5 * PX;
+      const hw = Math.sqrt(3) * R;
+      const r = rng(sign ? 21 : 22);
+      for (let row = 0; row * R * 1.5 < H + R; row++)
+        for (let col = 0; col * hw < W + hw; col++) {
+          const cx = col * hw + (row % 2 ? hw / 2 : 0);
+          const cy = row * R * 1.5;
+          ctx.beginPath();
+          for (let k = 0; k < 6; k++) {
+            const a = Math.PI / 6 + (k * Math.PI) / 3;
+            ctx.lineTo(cx + Math.cos(a) * R * 0.94, cy + Math.sin(a) * R * 0.94);
+          }
+          ctx.closePath();
+          if (emissive) {
+            ctx.fillStyle = `rgba(140, 88, 36, ${0.14 + r() * 0.08})`;
+            ctx.fill();
+          } else {
+            ctx.fillStyle = r() < 0.5 ? "#a8956f" : "#9a8764";
+            ctx.fill();
+          }
+        }
+      // Light strips along the top and both ends.
+      if (emissive) {
+        ctx.fillStyle = "#ffcf8a";
+        ctx.fillRect(0, 0, W, 7);
+        ctx.fillRect(0, 0, 7, H);
+        ctx.fillRect(W - 7, 0, 7, H);
+      }
+      // Openings: lit glass in the middle, dark drive-throughs with glowing frames either side.
+      openings.forEach(([cx, b, t, h], i) => {
+        ctx.beginPath();
+        ctx.moveTo(X(cx - b), Y(0));
+        ctx.lineTo(X(cx - t), Y(h));
+        ctx.lineTo(X(cx + t), Y(h));
+        ctx.lineTo(X(cx + b), Y(0));
+        ctx.closePath();
+        if (i === 0) ctx.fillStyle = emissive ? "#ffc47a" : "#f0cf98";
+        else ctx.fillStyle = emissive ? "#000" : "#141210";
+        ctx.fill();
+        ctx.lineWidth = 9;
+        ctx.strokeStyle = emissive ? "#ffb35c" : "#5a4528";
+        ctx.stroke();
+      });
+      if (sign) {
+        ctx.fillStyle = emissive ? "#fff3d8" : "#fff6e6";
+        ctx.font = `600 ${1.5 * PX}px Georgia, serif`;
+        ctx.textAlign = "center";
+        ctx.fillText("CITY", X(0), Y(6.6));
+        ctx.fillText("GATE", X(0), Y(4.9));
+      }
+    };
+    const faceMat = (sign: boolean) =>
+      new THREE.MeshStandardMaterial({ map: canvasTexture(W, H, draw(false, sign)), emissiveMap: canvasTexture(W, H, draw(true, sign)), emissive: 0xffffff, emissiveIntensity: 0.95, roughness: 0.7 });
+    const plain = new THREE.MeshStandardMaterial({ color: 0x8a7858, roughness: 0.75 });
+    // Box faces: +x, −x, +y, −y, +z (back, into the city), −z (front, facing the road).
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(GATE.w, GATE.h, GATE.d), [plain, plain, plain, plain, faceMat(false), faceMat(true)]);
+    wall.position.y = GATE.h / 2;
+    g.add(wall);
+    addLights(lightPoints(Array.from({ length: 30 }, (_, k) => {
+      const p = g.localToWorld(new THREE.Vector3(-GATE.w / 2 + (k + 0.5) * (GATE.w / 30), GATE.h + 0.1, -GATE.d / 2));
+      return [p.x, p.y, p.z];
+    }).flat(), new Array(90).fill(0).map((_, i) => [2.6, 2.0, 1.1][i % 3]), 1.2, 0.05, pixelRatio));
+
+    // Fountain with the globe and two bronze lions, in front of the entrance.
+    const bronze = new THREE.MeshStandardMaterial({ color: 0x7a4e2c, roughness: 0.35, metalness: 0.8, emissive: 0x2a1405, emissiveIntensity: 0.6 });
+    const fz = -GATE.d / 2 - 6.5;
+    const rim = new THREE.Mesh(new THREE.BoxGeometry(22, 0.8, 7), new THREE.MeshStandardMaterial({ color: 0x8b806f, roughness: 0.8 }));
+    rim.position.set(0, 0.4, fz);
+    const pool = new THREE.Mesh(new THREE.BoxGeometry(21, 0.2, 6), new THREE.MeshStandardMaterial({ color: 0x1d2a38, roughness: 0.08, metalness: 0.7 }));
+    pool.position.set(0, 0.82, fz);
+    const globeGeo = new THREE.IcosahedronGeometry(2.3, 2);
+    const globe = new THREE.Mesh(globeGeo, bronze);
+    globe.position.set(0, 3.2, fz);
+    const globeLines = new THREE.LineSegments(new THREE.EdgesGeometry(globeGeo, 1), new THREE.LineBasicMaterial({ color: new THREE.Color(1.6, 1.0, 0.5) }));
+    globeLines.position.copy(globe.position);
+    globeLines.scale.setScalar(1.01);
+    g.add(rim, pool, globe, globeLines);
+    for (const sx of [-6.5, 6.5]) {
+      const lion = new THREE.Group();
+      const plinth = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1, 3), new THREE.MeshStandardMaterial({ color: 0x3a3632, roughness: 0.7 }));
+      plinth.position.y = 1.2;
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.5, 2.4), bronze);
+      body.position.set(0, 2.4, 0.3);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.85, 12, 10), bronze);
+      head.position.set(0, 3.6, -0.7);
+      lion.add(plinth, body, head);
+      lion.position.set(sx, 0, fz);
+      g.add(lion);
+    }
+    const rimLights: number[] = [];
+    for (let k = 0; k < 24; k++) {
+      const p = g.localToWorld(new THREE.Vector3(-10.5 + (k * 21) / 23, 1.0, fz - 3.6));
+      rimLights.push(p.x, p.y, p.z);
+    }
+    addLights(lightPoints(rimLights, new Array(72).fill(0).map((_, i) => [2.6, 1.9, 1.0][i % 3]), 0.9, 0.1, pixelRatio));
+    addGlow(g.localToWorld(new THREE.Vector3(0, 4, -GATE.d / 2 - 1)), 26, 0.55);
+    addGlow(g.localToWorld(new THREE.Vector3(0, 3, fz)), 14, 0.45);
+
+    pickProxy("gate", new THREE.BoxGeometry(GATE.w + 4, 16, 24), g.localToWorld(new THREE.Vector3(0, 8, -6)));
+    pickables[pickables.length - 1].rotation.y = ROAD_YAW;
+  }
+
 
   // Lit window façades (facility + Free Trade Zone)
   const facade = (cols: number, rows: number, seed: number, wall = "#d7cebf", litShare = 0.72) => {
@@ -940,22 +1304,23 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
   };
   const roofMat = new THREE.MeshStandardMaterial({ color: 0xece4d6, roughness: 0.8 });
 
-  // 1,500-bed facility
+  // 1,500-bed facility: the two gold-roofed blocks of the aerial render, glazed and lit.
   {
-    const blocks = [
-      { x: FACILITY.x - 6, z: FACILITY.z - 8, w: 44, d: 14, h: 19, seed: 1 },
-      { x: FACILITY.x + 14, z: FACILITY.z + 12, w: 32, d: 12, h: 15, seed: 2 },
-      { x: FACILITY.x - 20, z: FACILITY.z + 14, w: 20, d: 12, h: 11, seed: 3 },
-    ];
-    for (const b of blocks) {
-      const { map, emissiveMap } = facade(Math.round(b.w / 2.6), Math.round(b.h / 3.2), b.seed);
-      const side = new THREE.MeshStandardMaterial({ map, emissiveMap, emissive: 0xffd59a, emissiveIntensity: 1.5, roughness: 0.7 });
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(b.w, b.h, b.d), [side, side, roofMat, roofMat, side, side]);
-      mesh.position.set(b.x, b.h / 2, b.z);
-      landmarks.add(mesh);
+    const goldRoof = new THREE.MeshStandardMaterial({ color: 0x9e8b52, roughness: 0.4, metalness: 0.6 });
+    for (const b of FACILITY_BLOCKS) {
+      const { map, emissiveMap } = facade(Math.round(b.w / 2.4), Math.round(b.h / 3), b.seed, "#3b3733", 0.74);
+      const side = new THREE.MeshStandardMaterial({ map, emissiveMap, emissive: 0xffd59a, emissiveIntensity: 1.5, roughness: 0.45, metalness: 0.2 });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(b.w, b.h, b.d), [side, side, goldRoof, goldRoof, side, side]);
+      mesh.position.set(b.x, b.h / 2 + 0.2, b.z);
+      mesh.rotation.y = b.yaw;
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(b.w + 1.8, 0.9, b.d + 1.8), goldRoof);
+      cap.position.set(b.x, b.h + 0.65, b.z);
+      cap.rotation.y = b.yaw;
+      landmarks.add(mesh, cap);
     }
-    addGlow(new THREE.Vector3(FACILITY.x, 4, FACILITY.z + 12), 40, 0.35);
-    pickProxy("facility", new THREE.BoxGeometry(60, 22, 40), new THREE.Vector3(FACILITY.x, 10, FACILITY.z + 2));
+    addGlow(new THREE.Vector3(FACILITY.x, 4, FACILITY.z), 30, 0.2);
+    pickProxy("facility", new THREE.BoxGeometry(58, 22, 30), new THREE.Vector3(FACILITY.x, 10, FACILITY.z));
+    pickables[pickables.length - 1].rotation.y = -0.62;
   }
 
   await yieldToBrowser();
@@ -967,26 +1332,28 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     const Y = 0.32;
     const at = (lx: number, lz: number, y = Y) => new THREE.Vector3(CARPARK.x + lx, y, CARPARK.z + lz);
     const STALL = 2.5;
-    const STALL_X0 = -26; // car stalls run from here…
-    const STALL_X1 = 14; // …to here; the bus bay is east of it
+    const STALL_X0 = -66; // car stalls run from here…
+    const STALL_X1 = 46; // …to here; the bus bay is east of it
     const ROWS = [
-      { z0: -18.5, z1: -13.5 },
-      { z0: -13.5, z1: -8.5 },
-      { z0: -2.5, z1: 2.5 },
-      { z0: 2.5, z1: 7.5 },
-      { z0: 13.5, z1: 18.5 },
+      { z0: -12, z1: -7 },
+      { z0: -7, z1: -2 },
+      { z0: 3, z1: 8 },
     ];
-    const AISLES = [-5.5, 10.5];
+    const AISLES = [0.5, 10.5];
+    // Planted tree islands breaking up the rows (as in the render), and the footbridge landing.
+    const ISLANDS = [-68, -28, 12];
+    const BRIDGE_LX = -6;
+    const keepClear = (lx: number, row: number) => ISLANDS.some((x) => Math.abs(lx - x) < 1.8) || (row === 0 && Math.abs(lx - BRIDGE_LX) < 3);
 
     // Painted asphalt.
-    const PX = 20;
+    const PX = 14;
     const tex = canvasTexture(LOT.w * PX, LOT.d * PX, (ctx) => {
       const r = rng(7);
       const X = (lx: number) => (lx + HW) * PX;
       const Z = (lz: number) => (lz + HD) * PX;
       ctx.fillStyle = "#2e2d2c";
       ctx.fillRect(0, 0, LOT.w * PX, LOT.d * PX);
-      for (let i = 0; i < 2600; i++) {
+      for (let i = 0; i < 4000; i++) {
         ctx.fillStyle = `rgba(${r() < 0.5 ? "255,255,255" : "0,0,0"},0.035)`;
         ctx.fillRect(r() * LOT.w * PX, r() * LOT.d * PX, 3, 3);
       }
@@ -1007,7 +1374,7 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
       // Direction arrows in the aisles.
       ctx.fillStyle = "#e9e5dc";
       for (const az of AISLES) {
-        for (const ax of [-18, -4, 10]) {
+        for (const ax of [-50, -18, 28]) {
           const cx = X(ax);
           const cy = Z(az);
           ctx.fillRect(cx - 26, cy - 3, 34, 6);
@@ -1021,17 +1388,17 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
       // Bus bay in yellow.
       ctx.strokeStyle = "#e2b33c";
       ctx.lineWidth = 3;
-      for (const [z0, z1] of [[-18.5, -6], [-1, 12]]) {
-        for (let x = 16; x <= 28.01; x += 3) {
+      for (const [z0, z1] of [[-12.5, -1.5]]) {
+        for (let x = 48; x <= 66.01; x += 3) {
           ctx.beginPath();
           ctx.moveTo(X(x), Z(z0));
           ctx.lineTo(X(x), Z(z1));
           ctx.stroke();
         }
       }
-      // Zebra crossing at the entrance.
+      // Zebra crossing at the footbridge landing.
       ctx.fillStyle = "#e9e5dc";
-      for (let k = 0; k < 7; k++) ctx.fillRect(X(-17.5 + k), Z(18.8), 10, 1.2 * PX);
+      for (let k = 0; k < 5; k++) ctx.fillRect(X(BRIDGE_LX - 2.5 + k), Z(-12.8), 7, 0.9 * PX);
       // Kerb.
       ctx.strokeStyle = "#bdb6a8";
       ctx.lineWidth = 14;
@@ -1077,11 +1444,11 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
 
     // Cars — common Sri Lankan colours: lots of white, silver and black.
     const carColors = ["#f2f1ee", "#f2f1ee", "#f2f1ee", "#c9ccd0", "#c9ccd0", "#1d1f22", "#1d1f22", "#5a5f66", "#8e1f22", "#2a4a7a", "#5c2a2e"];
-    const cars = new THREE.InstancedMesh(carGeo, vehicleMat, 120);
+    const cars = new THREE.InstancedMesh(carGeo, vehicleMat, 140);
     let n = 0;
-    ROWS.forEach((row) => {
+    ROWS.forEach((row, ri) => {
       for (let x = STALL_X0 + STALL / 2; x < STALL_X1; x += STALL) {
-        if (rand() < 0.22) continue; // a few empty bays
+        if (keepClear(x, ri) || rand() < 0.22) continue; // islands + a few empty bays
         const flip = rand() < 0.5 ? 0 : Math.PI;
         q.setFromAxisAngle(up, flip + (rand() - 0.5) * 0.06);
         cars.setMatrixAt(n, m.compose(at(x + (rand() - 0.5) * 0.15, (row.z0 + row.z1) / 2 + (rand() - 0.5) * 0.2), q, one));
@@ -1095,10 +1462,10 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     const busColors = ["#8a1c1c", "#8a1c1c", "#e8e2d4", "#2a5ca8", "#d9a321", "#7a2a6a"];
     const buses = new THREE.InstancedMesh(busGeo, vehicleMat, 8);
     let nbus = 0;
-    for (const zc of [-12.25, 5.5]) {
-      for (let k = 0; k < 4; k++) {
+    for (const zc of [-7]) {
+      for (let k = 0; k < 6; k++) {
         if (rand() < 0.15) continue;
-        buses.setMatrixAt(nbus, m.compose(at(17.5 + k * 3, zc), q.identity(), one));
+        buses.setMatrixAt(nbus, m.compose(at(49.5 + k * 3, zc), q.identity(), one));
         buses.setColorAt(nbus++, c.set(busColors[Math.floor(rand() * busColors.length)]));
       }
     }
@@ -1110,7 +1477,7 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     const tuks = new THREE.InstancedMesh(tukGeo, vehicleMat, 8);
     for (let k = 0; k < 8; k++) {
       q.setFromAxisAngle(up, Math.PI / 2 + (rand() - 0.5) * 0.2);
-      tuks.setMatrixAt(k, m.compose(at(-26 + k * 1.7, 17), q, one));
+      tuks.setMatrixAt(k, m.compose(at(-64 + k * 1.7, 10.5), q, one));
       tuks.setColorAt(k, c.set(tukColors[k % tukColors.length]));
     }
     landmarks.add(tuks);
@@ -1122,7 +1489,7 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     const lampPos: number[] = [];
     const lampCol: number[] = [];
     for (const lz of AISLES) {
-      for (const lx of [-20, -6, 8, 22]) {
+      for (const lx of [-55, -30, -5, 20, 45]) {
         const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.2, 9, 8), poleMat);
         pole.position.copy(at(lx, lz, 4.8));
         const head = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.35, 0.6), lampMat);
@@ -1136,33 +1503,42 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     }
     addLights(lightPoints(lampPos, lampCol, 2.6, 0.1, pixelRatio));
 
-    // Planted islands with palms at the west end of each row pair.
+    // Planted islands with palms and shade trees between the bays.
     const islandMat = new THREE.MeshStandardMaterial({ color: 0x3f6128, roughness: 1 });
     const islandPalmMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide });
     addSway(islandPalmMat, time, reducedMotion ? 0 : 0.3, 8);
-    const islandPalms = new THREE.InstancedMesh(palmGeometry(), islandPalmMat, 10);
+    const islandPalms = new THREE.InstancedMesh(palmGeometry(), islandPalmMat, 16);
+    const shade = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1).translate(0, 1.4, 0), new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), 16);
     let np = 0;
-    for (const [z0, z1] of [[-18.5, -8.5], [-2.5, 7.5]]) {
-      const island = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.5, z1 - z0), islandMat);
-      island.position.copy(at(-27, (z0 + z1) / 2, 0.45));
-      landmarks.add(island);
-      for (const zz of [z0 + 2, z1 - 2]) {
-        q.setFromAxisAngle(up, rand() * Math.PI * 2);
-        islandPalms.setMatrixAt(np++, m.compose(at(-27, zz, 0.6), q, one.clone().multiplyScalar(0.9 + rand() * 0.2)));
+    let nt = 0;
+    for (const ix of ISLANDS) {
+      for (const [z0, z1] of [[-12, -2], [3, 8]]) {
+        const island = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.5, z1 - z0), islandMat);
+        island.position.copy(at(ix, (z0 + z1) / 2, 0.45));
+        landmarks.add(island);
+        for (const zz of z1 - z0 > 6 ? [z0 + 2, z1 - 2] : [(z0 + z1) / 2]) {
+          q.setFromAxisAngle(up, rand() * Math.PI * 2);
+          if ((ix + zz) % 2 === 0 || nt >= 16) islandPalms.setMatrixAt(np++, m.compose(at(ix, zz, 0.6), q, one.clone().multiplyScalar(0.9 + rand() * 0.2)));
+          else {
+            shade.setMatrixAt(nt, m.compose(at(ix, zz, 0.5), q, new THREE.Vector3(2.4, 2, 2.4)));
+            shade.setColorAt(nt++, c.setHSL(0.27 + rand() * 0.06, 0.45, 0.12 + rand() * 0.05));
+          }
+        }
       }
     }
     islandPalms.count = np;
-    landmarks.add(islandPalms);
+    shade.count = nt;
+    landmarks.add(islandPalms, shade);
 
-    // Entrance gate booth with a barrier arm.
+    // Entrance booth with a barrier arm at the west end, where the access road comes in.
     const booth = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.4, 2.2), new THREE.MeshStandardMaterial({ color: 0xece4d6, roughness: 0.8, emissive: 0x3a2a18, emissiveIntensity: 0.4 }));
-    booth.position.copy(at(-10.5, HD + 1.8, 1.5));
+    booth.position.copy(at(-HW - 1.8, 7, 1.5));
     const boothRoof = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.25, 2.8), new THREE.MeshStandardMaterial({ color: 0xa8492b }));
-    boothRoof.position.copy(at(-10.5, HD + 1.8, 2.85));
-    const barrier = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.14, 0.14), new THREE.MeshStandardMaterial({ color: 0xd23a2a, emissive: 0x401010 }));
-    barrier.position.copy(at(-13.2, HD + 1.2, 1.15));
+    boothRoof.position.copy(at(-HW - 1.8, 7, 2.85));
+    const barrier = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 4.2), new THREE.MeshStandardMaterial({ color: 0xd23a2a, emissive: 0x401010 }));
+    barrier.position.copy(at(-HW - 0.4, 10.5, 1.15));
     landmarks.add(booth, boothRoof, barrier);
-    addLights(lightPoints([CARPARK.x - 10.5, 2.2, CARPARK.z + HD + 0.65], [2.4, 1.8, 1.0], 1.6, 0, pixelRatio));
+    addLights(lightPoints([CARPARK.x - HW - 0.6, 2.2, CARPARK.z + 7], [2.4, 1.8, 1.0], 1.6, 0, pixelRatio));
 
     pickProxy("carpark", new THREE.BoxGeometry(LOT.w + 4, 10, LOT.d + 4), at(0, 0, 4));
   }
@@ -1174,9 +1550,12 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     const SX = DOME.rx / 22.4; // lathe radius 22.4 → oval footprint
     const g = new THREE.Group();
     g.position.set(DOME.x, 0.25, DOME.z);
-    // Modelled with the entrance on local −z; turned so it faces south (+z), towards the city.
-    g.rotation.y = Math.PI;
+    // Modelled with the entrance on local −z; turned as in the aerial render (long axis NNW–SSE,
+    // entrance facing north-east towards the City Gate).
+    g.rotation.y = DOME.yaw;
     landmarks.add(g);
+    g.updateMatrixWorld(true);
+    const toWorld = (x: number, y: number, z: number) => g.localToWorld(new THREE.Vector3(x, y, z));
 
     const white = new THREE.MeshStandardMaterial({ color: 0xf1efe9, roughness: 0.55 });
     // Walls lean slightly outwards up to the rim, like the real building.
@@ -1187,11 +1566,11 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     rim.scale.set(SX, 1, 1);
     rim.position.y = 11.9;
 
-    // Low, ribbed silver roof.
+    // Low, ribbed green roof (as in the masterplan renders).
     const ribs = canvasTexture(1024, 64, (ctx) => {
-      ctx.fillStyle = "#b9bcbd";
+      ctx.fillStyle = "#6f9a40";
       ctx.fillRect(0, 0, 1024, 64);
-      ctx.fillStyle = "#9da1a3";
+      ctx.fillStyle = "#5a8234";
       for (let x = 0; x < 1024; x += 8) ctx.fillRect(x, 0, 2, 64);
     });
     const roofProfile: THREE.Vector2[] = [];
@@ -1200,7 +1579,7 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
       roofProfile.push(new THREE.Vector2(22.4 * Math.cos(t) + 0.01, 12.5 + 6.2 * Math.sin(t)));
     }
     roofProfile.reverse();
-    const roof = new THREE.Mesh(new THREE.LatheGeometry(roofProfile, 128), new THREE.MeshStandardMaterial({ map: ribs, roughness: 0.35, metalness: 0.65, side: THREE.DoubleSide }));
+    const roof = new THREE.Mesh(new THREE.LatheGeometry(roofProfile, 128), new THREE.MeshStandardMaterial({ map: ribs, roughness: 0.5, metalness: 0.3, side: THREE.DoubleSide }));
     roof.scale.set(SX, 1, 1);
     g.add(walls, rim, roof);
 
@@ -1219,7 +1598,7 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
       g.add(step);
     }
     g.add(entrance, canopy);
-    addGlow(new THREE.Vector3(DOME.x - 4, 4, DOME.z + DOME.rz + 2), 20, 0.45);
+    addGlow(toWorld(4, 4, -DOME.rz - 2), 20, 0.45);
 
     // The white sweeping "sail" fin on the west side.
     const fin = new THREE.Shape();
@@ -1238,10 +1617,35 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     const rimCol: number[] = [];
     for (let k = 0; k < 90; k++) {
       const a = (k / 90) * Math.PI * 2;
-      rimPos.push(DOME.x + Math.cos(a) * DOME.rx * 1.01, 12.4, DOME.z + Math.sin(a) * DOME.rz * 1.01);
+      const p = toWorld(Math.cos(a) * DOME.rx * 1.01, 12.15, Math.sin(a) * DOME.rz * 1.01);
+      rimPos.push(p.x, p.y, p.z);
       rimCol.push(2.2, 1.9, 1.4);
     }
     addLights(lightPoints(rimPos, rimCol, 0.9, 0.15, pixelRatio));
+
+    // Gold crescent walk around the south-east side (world angles; see CRESCENT).
+    {
+      const goldMat = new THREE.MeshStandardMaterial({ color: 0x9a8850, roughness: 0.6, metalness: 0.35, side: THREE.DoubleSide });
+      const len = CRESCENT.a1 - CRESCENT.a0;
+      // RingGeometry lies in XY; after rotateX(−π/2) its angle θ maps to world angle −θ.
+      const top = new THREE.Mesh(new THREE.RingGeometry(CRESCENT.r0, CRESCENT.r1, 72, 1, -CRESCENT.a1, len).rotateX(-Math.PI / 2), goldMat);
+      top.position.set(DOME.x, 1.7, DOME.z);
+      landmarks.add(top);
+      // Its side walls (CylinderGeometry θ = π/2 − world angle).
+      for (const r of [CRESCENT.r0, CRESCENT.r1]) {
+        const wall = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 2.6, 72, 1, true, Math.PI / 2 - CRESCENT.a1, len), goldMat);
+        wall.position.set(DOME.x, 0.4, DOME.z);
+        landmarks.add(wall);
+      }
+      const lights: number[] = [];
+      const lightCol: number[] = [];
+      for (let k = 0; k <= 40; k++) {
+        const a = CRESCENT.a0 + (len * k) / 40;
+        lights.push(DOME.x + Math.cos(a) * (CRESCENT.r1 + 0.2), 1.9, DOME.z + Math.sin(a) * (CRESCENT.r1 + 0.2));
+        lightCol.push(2.4, 1.9, 1.0);
+      }
+      addLights(lightPoints(lights, lightCol, 1, 0.1, pixelRatio));
+    }
 
     // Two-storey annex to the west, behind the fin.
     const annex = facade(8, 2, 12, "#ece8e0", 0.7);
@@ -1293,21 +1697,23 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     g.add(parked, bikes);
 
     pickProxy("dome", new THREE.CylinderGeometry(DOME.rx + 2, DOME.rx + 2, 20, 32).scale(1, 1, DOME.rz / DOME.rx), new THREE.Vector3(DOME.x, 9, DOME.z));
+    pickables[pickables.length - 1].rotation.y = DOME.yaw;
   }
 
   await yieldToBrowser();
   // ===== Surroundings =====
 
-  // Roads. [0] = Katunayake–Veyangoda Road: from the airport side (SW) past the site, inland to the NE.
+  // Roads. [0] = Katunayake–Veyangoda Road: from the airport side (SW) along the north-west edge of
+  // the site (as in the aerial render), inland to the NE.
   const roads = [
-    [[-330, 175], [-220, 140], [-120, 92], [-20, 72], [80, 70], [178, 60], [245, -12], [330, -100], [460, -210], [620, -330]],
-    [[FACILITY.x + 10, FACILITY.z + 22], [-50, 60], [-40, 76]],
-    [[ZION.x, ZION.z + 36], [ZION.x + 6, 70]],
-    [[CARPARK.x - 14, CARPARK.z + LOT.d / 2 + 0.5], [CARPARK.x - 14, 66]], // car park entrance
-    [[DOME.x - 4, DOME.z + DOME.rz + 9], [150, -14], [182, 4], [184, 56]], // Miracle Dome access, east of the car park
+    [[-330, 175], [-260, 70], [-205, -35], [-160, -61], [-80, -107], [0, -153], [120, -222], [260, -302], [460, -417], [620, -509]],
+    // In through the City Gate's east arch, past the facility, over the river to the car park.
+    [[-77, -108], [-68.7, -92.5], [-58, -80], [-40, -62], [-28, -38], [-36, 0], [-48, 24], [-58, 40], [-60, 58], [-64, 74], [-57, 86.5]],
+    [[-36, 2], [-14, 14], [4, 22]], // to the stage forecourt
+    [[-130, -78], [-112, -64], [-92, -55], [-78, -42]], // Miracle Dome forecourt
     [[-160, 115], [-175, 160], [-200, 205]], // airport access
-    [[-20, 72], [-60, 160], [-110, 300], [-140, 520]], // south towards Seeduwa / Colombo
-    [[-120, 92], [-150, 20], [-170, -90], [-205, -125]], // north towards the lagoon shore
+    [[-57, 86.5], [-60, 160], [-110, 300], [-140, 520]], // south towards Seeduwa / Colombo
+    [[-160, -61], [-170, -90], [-205, -125]], // north towards the lagoon shore
   ].map((pts) => new THREE.CatmullRomCurve3(pts.map(([x, z]) => new THREE.Vector3(x, 0, z))));
   {
     const roadMat = new THREE.MeshStandardMaterial({ color: 0x2a2623, roughness: 0.95 });
@@ -1523,7 +1929,7 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
   // Villages: whitewashed / pastel houses with red clay-tile roofs, warm windows
   {
     const centres = [
-      [90, 115], [-10, 130], [175, 62], [300, 8], [-110, -125], [60, -140], [380, -70],
+      [60, 190], [-120, 150], [175, 62], [300, 8], [-110, -135], [380, -70],
       [-60, 300], [200, 265], [-280, 20], [-320, -60], [460, 60], [260, -260], [-200, -140],
     ];
     const MAX = Math.round(420 * detail);
@@ -1676,12 +2082,14 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
 
   // Highlight rings for hover / selection
   const rings = new Map<string, THREE.Mesh>();
-  const ringDefs: Record<string, { pos: THREE.Vector3; r: number; sx?: number }> = {
-    facility: { pos: new THREE.Vector3(FACILITY.x, 0.6, FACILITY.z + 2), r: 34 },
+  // `rot`: in-plane rotation (same convention as rotation.y) for stretched rings.
+  const ringDefs: Record<string, { pos: THREE.Vector3; r: number; sx?: number; rot?: number }> = {
+    gate: { pos: new THREE.Vector3(GATE.x, 0.6, GATE.z - 2), r: 13, sx: 2, rot: ROAD_YAW },
+    facility: { pos: new THREE.Vector3(FACILITY.x, 0.6, FACILITY.z), r: 21, sx: 1.6, rot: -0.62 },
     carmel: { pos: new THREE.Vector3(HILL.x, peakY + 0.7, HILL.z), r: HILL.top + 2.5 },
-    zion: { pos: new THREE.Vector3(ZION.x, 0.6, ZION.z), r: 40, sx: 1.5 },
-    carpark: { pos: new THREE.Vector3(CARPARK.x, 0.6, CARPARK.z), r: 25, sx: 1.4 },
-    dome: { pos: new THREE.Vector3(DOME.x, 0.7, DOME.z), r: DOME.rz + 9, sx: (DOME.rx + 9) / (DOME.rz + 9) },
+    zion: { pos: new THREE.Vector3(ZION.x, 0.7, ZION.z + 3), r: 22 },
+    carpark: { pos: new THREE.Vector3(CARPARK.x, 0.6, CARPARK.z), r: 18, sx: 4.2 },
+    dome: { pos: new THREE.Vector3(DOME.x, 0.7, DOME.z), r: DOME.rz + 9, sx: (DOME.rx + 9) / (DOME.rz + 9), rot: DOME.yaw },
   };
   for (const [id, def] of Object.entries(ringDefs)) {
     const ring = new THREE.Mesh(
@@ -1689,6 +2097,7 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
       new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 1.9, 1.0), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
     );
     ring.rotation.x = -Math.PI / 2;
+    ring.rotation.z = def.rot ?? 0;
     ring.scale.set(def.sx ?? 1, 1, 1);
     ring.position.copy(def.pos);
     landmarks.add(ring);
@@ -1759,22 +2168,22 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
   }
 
   // Mouse wheel scrolls the page as usual; only trackpad pinch (ctrl+wheel) zooms the map.
-  if (!cinematic) {
-    container.addEventListener(
+  const addWheel = (el: HTMLElement) =>
+    el.addEventListener(
       "wheel",
       (e) => {
         if (!e.ctrlKey) e.stopPropagation();
       },
       { capture: true },
     );
-  }
+  if (!cinematic) addWheel(view.container);
 
   // Hero fly-in: from high over the coast down to the establishing view, then a slow drift.
   const INTRO = {
     fromPos: new THREE.Vector3(560, 300, 700),
     fromTarget: new THREE.Vector3(40, 0, -10),
-    toPos: new THREE.Vector3(232, 92, 248),
-    toTarget: new THREE.Vector3(24, 24, -38),
+    toPos: new THREE.Vector3(186, 88, 230),
+    toTarget: new THREE.Vector3(-18, 6, -22),
     seconds: 9,
   };
   let introStart = 0;
@@ -1818,8 +2227,17 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     flight = { fromPos: camera.position.clone(), fromTarget: controls.target.clone(), toPos, toTarget, start: performance.now(), dur: 1600 };
     controls.enabled = false;
   };
-  const anchors = new Map(spots.map((s) => [s.id, new THREE.Vector3(...s.anchor)]));
-  const focusDistance: Record<string, number> = { carmel: 135, zion: 120, facility: 105, carpark: 100, dome: 110 };
+  const focusDistance: Record<string, number> = { carmel: 80, zion: 150, facility: 100, carpark: 125, dome: 115, gate: 85 };
+  // Fixed viewing directions (from the target towards the camera), chosen to keep the sunset to
+  // the side: Carmel Hill and the grounds from the south, the City Gate from the road (its front),
+  // the Miracle Dome from the east over its crescent.
+  const viewDir: Record<string, THREE.Vector3> = {
+    carmel: new THREE.Vector3(-0.35, 0, 1),
+    zion: new THREE.Vector3(0.2, 0, 1),
+    gate: new THREE.Vector3(-0.498, 0, -0.867),
+    facility: new THREE.Vector3(0.25, 0, -1),
+    dome: new THREE.Vector3(0.9, 0, 0.45),
+  };
 
   let highlighted: string | null = null;
   const highlight = (id: string | null) => {
@@ -1827,15 +2245,13 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
   };
 
   const focus = (id: string) => {
-    const anchor = anchors.get(id);
-    if (!anchor) return;
-    // Carmel Hill: always seen from the south, so the sunset is to the side (not glaring into
-    // the lens) and the lagoon lies behind it. Others: a three-quarter aerial from the current side.
+    const anchor = view.anchors.get(id);
+    if (!anchor || cinematic) return;
+    // Others: a three-quarter aerial from the current side.
     const carmel = id === "carmel";
-    const toTarget = carmel ? new THREE.Vector3(HILL.x, peakY - 6, HILL.z + 6) : anchor.clone().setY(Math.max(4, anchor.y - 8));
-    // The Miracle Dome is seen from the south, where its glass entrance is (Carmel Hill behind it).
-    const fixedDir = carmel ? new THREE.Vector3(-0.35, 0, 1) : id === "dome" ? new THREE.Vector3(0.35, 0, 1) : null;
-    const dir = fixedDir ? fixedDir.normalize() : camera.position.clone().sub(controls.target).setY(0).normalize();
+    const toTarget = carmel ? new THREE.Vector3(HILL.x, peakY + 3, HILL.z) : anchor.clone().setY(Math.max(4, anchor.y - 8));
+    const fixedDir = viewDir[id];
+    const dir = fixedDir ? fixedDir.clone().normalize() : camera.position.clone().sub(controls.target).setY(0).normalize();
     const dist = focusDistance[id] ?? 100;
     const lift = carmel ? 0.38 : 0.42;
     const toPos = toTarget.clone().addScaledVector(dir, dist * 0.9).setY(toTarget.y + dist * lift);
@@ -1869,27 +2285,28 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     if (id !== hoverId) {
       hoverId = id;
       renderer.domElement.style.cursor = id ? "pointer" : "";
-      opts.onHover(id);
+      view.onHover(id);
     }
   });
   renderer.domElement.addEventListener("pointerleave", () => {
-    if (hoverId) opts.onHover((hoverId = null));
+    if (hoverId) view.onHover((hoverId = null));
     renderer.domElement.style.cursor = "";
   });
   let downAt = { x: 0, y: 0 };
   renderer.domElement.addEventListener("pointerdown", (e) => (downAt = { x: e.clientX, y: e.clientY }));
   renderer.domElement.addEventListener("click", (e) => {
     if (Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 6) return; // was a drag
+    if (cinematic) return;
     const id = pick(e as PointerEvent);
-    if (id) opts.onSelect(id);
+    if (id) view.onSelect(id);
   });
 
   // Size + visibility
   let width = 1;
   let height = 1;
   const resize = () => {
-    width = container.clientWidth || 1;
-    height = container.clientHeight || 1;
+    width = view.container.clientWidth || 1;
+    height = view.container.clientHeight || 1;
     renderer.setSize(width, height, false);
     composer.setPixelRatio(pixelRatio);
     composer.setSize(width, height);
@@ -1905,14 +2322,43 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     else camera.clearViewOffset();
     camera.updateProjectionMatrix();
   };
-  new ResizeObserver(resize).observe(container);
+  const resizer = new ResizeObserver(() => resize());
   resize();
 
-  let visible = true;
-  new IntersectionObserver(([entry]) => {
-    visible = entry.isIntersecting;
-    if (visible) loop();
-  }).observe(container);
+  // Move the canvas to whichever view is on screen (the interactive map wins if both are).
+  const switchTo = (next: View) => {
+    if (!cinematic) view.saved = { pos: camera.position.clone(), target: controls.target.clone() };
+    flight = null;
+    if (hoverId) view.onHover((hoverId = null));
+    renderer.domElement.style.cursor = "";
+    view = next;
+    cinematic = next.cinematic;
+    next.container.append(renderer.domElement);
+    renderer.domElement.style.pointerEvents = cinematic ? "none" : "";
+    controls.enabled = !cinematic;
+    controls.autoRotate = !cinematic && !reducedMotion;
+    if (!cinematic) {
+      camera.position.copy(next.saved?.pos ?? HOME.pos);
+      controls.target.copy(next.saved?.target ?? HOME.target);
+      controls.update();
+    }
+    resize();
+  };
+  const anyVisible = () => views.some((v) => v.visible);
+  const visibility = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      const v = views.find((x) => x.container === entry.target);
+      if (v) v.visible = entry.isIntersecting;
+    }
+    const next = views.find((v) => v.visible && !v.cinematic) ?? views.find((v) => v.visible);
+    if (next && next !== view) switchTo(next);
+    if (anyVisible()) loop();
+  });
+  const watch = (v: View) => {
+    visibility.observe(v.container);
+    resizer.observe(v.container);
+  };
+  watch(view);
 
   const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
   const v = new THREE.Vector3();
@@ -1928,11 +2374,9 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     el.classList.toggle("is-hidden", v.z > 1 || x < -margin || x > width + margin || y < -margin || y > height + margin);
     return { x, y };
   };
-  const labelPositions = labels.map((l) => new THREE.Vector3(...l.pos));
-
   const positionMarkers = () => {
-    for (const [id, el] of markers) {
-      const anchor = anchors.get(id);
+    for (const [id, el] of view.markers) {
+      const anchor = view.anchors.get(id);
       if (!anchor) continue;
       const { x, y } = project(el, anchor);
       el.classList.toggle("hotspot--right", x > width * 0.7);
@@ -1940,7 +2384,7 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
       const card = el.dataset.card;
       el.classList.toggle("hotspot--below", card === "below" || (card !== "above" && y < height * 0.45));
     }
-    labels.forEach((l, i) => project(l.el, labelPositions[i], -10));
+    view.labels.forEach((l, i) => project(l.el, view.labelPositions[i], -10));
   };
 
   const egretMatrix = new THREE.Matrix4();
@@ -2019,7 +2463,7 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
     perf.since = 0;
     perf.frames = 0;
     const frame = (now: number) => {
-      if (!visible || document.hidden) {
+      if (!anyVisible() || document.hidden) {
         running = false;
         return;
       }
@@ -2048,11 +2492,11 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
         controls.update();
       }
       animateWorld(reducedMotion ? 9 : t);
-      beamFade.value = smoothstep(70, 150, Math.hypot(camera.position.x - ZION.x, camera.position.z - ZION.z));
+      beamFade.value = smoothstep(70, 150, Math.hypot(camera.position.x - STAGE.x, camera.position.z - STAGE.z));
 
       rings.forEach((ring, id) => {
         const mat = ring.material as THREE.MeshBasicMaterial;
-        const on = id === highlighted || id === hoverId;
+        const on = !cinematic && (id === highlighted || id === hoverId);
         mat.opacity += ((on ? 0.9 : 0) - mat.opacity) * 0.12;
         const pulse = on && !reducedMotion ? 1 + 0.04 * Math.sin(t * 3) : 1;
         ring.scale.set((ringDefs[id].sx ?? 1) * pulse, pulse, 1);
@@ -2066,12 +2510,24 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
   }
   document.addEventListener("visibilitychange", () => !document.hidden && loop());
 
-  // Compile every shader in the background (parallel compile where the GPU supports it).
+  // Compile every shader in the background (parallel compile where the GPU supports it). The city
+  // is drawn into the composer's off-screen target, whose shader variants differ from on-screen
+  // ones (no tone mapping, linear output), so compile with that target bound — otherwise all of
+  // them were compiled again, synchronously, on the first frame (a 7 s freeze on phones).
+  renderer.debug.checkShaderErrors = false; // skips extra blocking driver round-trips per shader
+  // The post-processing passes' shaders (bloom, SMAA…) too, via stand-in quads using their materials.
+  const ppScene = new THREE.Scene();
+  const quad = new THREE.PlaneGeometry(2, 2);
+  for (const pass of composer.passes)
+    for (const value of Object.values(pass))
+      for (const m of Array.isArray(value) ? value : [value]) if (m instanceof THREE.Material) ppScene.add(new THREE.Mesh(quad, m));
+  renderer.setRenderTarget(composer.readBuffer);
   try {
-    await renderer.compileAsync(scene, camera);
+    await Promise.all([renderer.compileAsync(scene, camera), renderer.compileAsync(ppScene, camera)]);
   } catch {
     /* falls back to compiling on the first frame */
   }
+  renderer.setRenderTarget(null);
   if (cinematic) {
     camera.position.copy(INTRO.fromPos);
     camera.lookAt(INTRO.fromTarget);
@@ -2091,5 +2547,14 @@ export async function createCity3D(opts: CityOptions): Promise<CityController> {
   await yieldToBrowser();
   ready = true;
   loop();
-  return { focus, reset, zoom, highlight };
+  const controller: CityController = { focus, reset, zoom, highlight };
+  // Another section showing the same city (e.g. the Explore map after the hero).
+  const attach = (o: CityOptions) => {
+    const v = makeView(o);
+    views.push(v);
+    if (!v.cinematic) addWheel(v.container);
+    watch(v);
+    return controller;
+  };
+  return { controller, attach };
 }

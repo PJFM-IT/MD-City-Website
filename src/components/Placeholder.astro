@@ -21,8 +21,11 @@ const { label = "Image", ratio = "16 / 9", class: className = "", src, scene, se
   src ? (
     <img class:list={["ph", "ph--img", className]} style={`--ph-ratio: ${ratio}`} src={src} alt={label} loading="lazy" decoding="async" />
   ) : scene ? (
-    <div class:list={["ph", "ph--scene", className]} style={`--ph-ratio: ${ratio}`} role="img" aria-label={label}>
-      <Scene name={scene} seed={seed} />
+    <div class:list={["ph", "ph--scene", className]} style={`--ph-ratio: ${ratio}`} role="img" aria-label={label} data-lazy-scene-host>
+      {/* Drawn only when scrolled near (scenes.ts): thousands of SVG shapes made phones lag on load. */}
+      <template data-lazy-scene>
+        <Scene name={scene} seed={seed} />
+      </template>
     </div>
   ) : (
     <div class:list={["ph", `ph--${tone}`, className]} style={`--ph-ratio: ${ratio}`} role="img" aria-label={label}>
