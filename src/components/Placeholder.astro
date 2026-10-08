@@ -15,11 +15,14 @@ interface Props {
 }
 
 const { label = "Image", ratio = "16 / 9", class: className = "", src, scene, seed, tone = "warm" } = Astro.props;
+// Photos in /images/photos/ ship in two sizes (name.webp = 1920 wide, name-960.webp for phones);
+// the browser picks the sharpest one it needs for the screen.
+const srcset = src && /^\/images\/photos\/.+\.webp$/.test(src) && !src.endsWith("-960.webp") ? `${src.replace(/\.webp$/, "-960.webp")} 960w, ${src} 1920w` : undefined;
 ---
 
 {
   src ? (
-    <img class:list={["ph", "ph--img", className]} style={`--ph-ratio: ${ratio}`} src={src} alt={label} loading="lazy" decoding="async" />
+    <img class:list={["ph", "ph--img", className]} style={`--ph-ratio: ${ratio}`} src={src} srcset={srcset} sizes={srcset ? "(max-width: 860px) 100vw, 60vw" : undefined} alt={label} loading="lazy" decoding="async" />
   ) : scene ? (
     <div class:list={["ph", "ph--scene", className]} style={`--ph-ratio: ${ratio}`} role="img" aria-label={label} data-lazy-scene-host>
       {/* Drawn only when scrolled near (scenes.ts): thousands of SVG shapes made phones lag on load. */}

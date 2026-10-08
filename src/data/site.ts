@@ -115,9 +115,10 @@ export const hotspots = [
  * While a value is empty, the section shows its illustrated scene instead.
  */
 export const media = {
-  hero: "",
-  vision: "",
-  filmPoster: "",
+  /** Shown only if the 3D hero can't run. */
+  hero: "/images/renders/aerial-masterplan.webp",
+  vision: "/images/renders/aerial-close.webp",
+  filmPoster: "/images/renders/crusade-grounds-dome-sm.webp",
   /** Architect's aerial masterplan (shown if the 3D map can't run). */
   explore: "/images/renders/aerial-masterplan.webp",
   zion: "/images/renders/crusade-grounds-night.webp",
@@ -125,7 +126,8 @@ export const media = {
   carmel: "/images/renders/carmel-hill.webp",
   facility: "/images/renders/accommodation.webp",
   prosperity: "",
-  visionary: "",
+  /** Official portrait (prophetjerome.com); the section shows it in black and white. */
+  visionary: "/images/photos/prophet-jerome-fernando.webp",
   finalHero: "/images/renders/city-gate-lit.webp",
   /** Real photo of the existing Miracle Dome (shown in its 3D map card). */
   miracleDome: "/images/miracle-dome.webp",
@@ -153,16 +155,19 @@ export interface GalleryItem {
   scene: SceneName;
 }
 
+// Official high-resolution photos from the ministry's websites (miracle-dome.com, prophetjerome.com).
+// Lead: the ministry's own "Partner Give" photo; the rest are services at the Miracle Dome.
 export const givingGallery: GalleryItem[] = [
-  { src: "", alt: "People lined up to give towards the vision", scene: "queue" },
-  { src: "", alt: "Giving at the table", scene: "giving" },
-  { src: "", alt: "Partners greeting one another", scene: "greeting" },
-  { src: "", alt: "The hall during the day of giving", scene: "hall" },
-  { src: "", alt: "The crowd gathered in worship", scene: "worship" },
+  { src: "/images/photos/partners-giving.webp", alt: "Partners giving towards the vision", scene: "queue" },
+  { src: "/images/photos/dome-service.webp", alt: "A full Miracle Dome during a service", scene: "giving" },
+  { src: "/images/photos/dome-worship.webp", alt: "Worship at the Miracle Dome", scene: "greeting" },
+  { src: "/images/photos/dome-congregation-wide.webp", alt: "The Miracle Dome congregation", scene: "hall" },
+  { src: "/images/photos/dome-service-wide.webp", alt: "The Miracle Dome filled to capacity", scene: "worship" },
 ];
 
+// The real Miracle Dome on its land, then the architect's renders of the city to come.
 export const prosperityGallery: GalleryItem[] = [
-  { src: "", alt: "Partners gathered in prayer on the land", scene: "prayer" },
-  { src: "", alt: "Prophet Jerome Fernando declaring over the land", scene: "declare" },
-  { src: "", alt: "The land at sunset", scene: "land" },
+  { src: "/images/photos/miracle-dome-aerial.webp", alt: "The Miracle Dome and its land in Katunayake", scene: "prayer" },
+  { src: "/images/renders/crusade-grounds-day.webp", alt: "The crusade grounds on the land (architect's render)", scene: "declare" },
+  { src: "/images/renders/aerial-masterplan.webp", alt: "Miracle Dome City in its forest setting (architect's render)", scene: "land" },
 ];
