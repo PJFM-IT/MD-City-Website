@@ -58,7 +58,7 @@ const places = [
                 "hotspot",
                 { "hotspot--right": spot.alignRight, "hotspot--left": spot.alignLeft, "hotspot--below": spot.below },
               ]}
-              style={`left:${spot.x}; top:${spot.y};`}
+              style={`left:${spot.x}; top:${spot.y}; --i:${spots.indexOf(spot)};`}
               data-hotspot={spot.id}
               data-card={"card" in spot ? spot.card : undefined}
               data-follow-depth={spot.depth}
@@ -69,8 +69,15 @@ const places = [
             aria-expanded="false"
             aria-controls={`hotspot-${spot.id}`}
           >
-            <span class="hotspot__label">{spot.label}</span>
-            <span class="play-icon hotspot__icon" aria-hidden="true" />
+            {/* A floating name card on a thin stem, pointing down at the building. */}
+            <span class="hotspot__pin">
+              <span class="hotspot__label">
+                <span class="hotspot__name">{spot.label}</span>
+                <span class="hotspot__short" aria-hidden="true">{spot.short}</span>
+              </span>
+              <span class="hotspot__stem" aria-hidden="true" />
+            </span>
+            <span class="hotspot__dot" aria-hidden="true" />
           </button>
           <div class="hotspot__card" id={`hotspot-${spot.id}`} role="region" aria-label={spot.label}>
             {spot.photo && <img class="hotspot__photo" src={spot.photo} alt="" loading="lazy" />}
@@ -442,9 +449,10 @@ const places = [
     touch-action: pan-y;
   }
 
+  /* The marker's bottom (the glowing dot) sits exactly on the building. */
   .hotspot {
     position: absolute;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -100%);
   }
 
   .hotspot.is-open {
@@ -454,7 +462,6 @@ const places = [
   .hotspot__trigger {
     display: grid;
     justify-items: center;
-    gap: 0.6rem;
     padding: 0;
     border: 0;
     background: none;
@@ -462,35 +469,72 @@ const places = [
     cursor: pointer;
   }
 
+  /* Name card + stem bob gently up and down (staggered per place). */
+  .hotspot__pin {
+    display: grid;
+    justify-items: center;
+    animation: pin-float 3.2s ease-in-out calc(var(--i, 0) * -0.55s) infinite;
+  }
+
   .hotspot__label {
-    padding: 0.4rem 0.7rem;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    background: rgba(12, 14, 18, 0.82);
+    position: relative;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid rgba(228, 197, 122, 0.55);
+    border-radius: 0.35rem;
+    background: rgba(12, 14, 18, 0.86);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(6px);
     font-family: var(--font-display);
     font-size: 0.68rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     white-space: nowrap;
-    transition: border-color 0.3s var(--ease-out), color 0.3s var(--ease-out);
+    transition: border-color 0.3s var(--ease-out), color 0.3s var(--ease-out), background 0.3s var(--ease-out);
   }
 
-  .hotspot__icon {
-    border-color: var(--color-white);
-    color: var(--color-white);
-    animation: pulse 2.6s ease-out infinite;
+  /* Little pointer under the card. */
+  .hotspot__label::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin: -0.25rem 0 0 -0.25rem;
+    border-right: 1px solid rgba(228, 197, 122, 0.55);
+    border-bottom: 1px solid rgba(228, 197, 122, 0.55);
+    background: rgba(12, 14, 18, 0.95);
+    transform: rotate(45deg);
   }
 
+  .hotspot__short { display: none; }
+
+  /* The stem grows when cards are stacked to avoid overlapping (--lift, set by the 3D map). */
+  .hotspot__stem {
+    width: 1px;
+    height: calc(0.85rem + var(--lift, 0px));
+    background: linear-gradient(rgba(228, 197, 122, 0.85), rgba(228, 197, 122, 0.15));
+    transition: height 0.35s var(--ease-out);
+  }
+
+  .hotspot__dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--color-gold-bright);
+    animation: pulse 2.6s ease-out calc(var(--i, 0) * -0.4s) infinite;
+  }
+
+  .hotspot__trigger:hover .hotspot__label,
   .hotspot.is-open .hotspot__label,
   .hotspot__trigger:focus-visible .hotspot__label {
-    border-color: var(--color-gold);
-    color: var(--color-gold-bright);
-  }
-
-  .hotspot.is-open .hotspot__icon {
-    transform: scale(1.12);
     border-color: var(--color-gold-bright);
     color: var(--color-gold-bright);
-    background: rgba(201, 164, 92, 0.3);
+    background: rgba(28, 24, 16, 0.92);
+  }
+
+  .hotspot.is-open .hotspot__pin {
+    animation-play-state: paused;
   }
 
   .hotspot__trigger:focus-visible {
@@ -584,9 +628,14 @@ const places = [
   }
 
   @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(228, 197, 122, 0.5); }
-    70% { box-shadow: 0 0 0 14px rgba(228, 197, 122, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(228, 197, 122, 0.6); }
+    70% { box-shadow: 0 0 0 10px rgba(228, 197, 122, 0); }
     100% { box-shadow: 0 0 0 0 rgba(228, 197, 122, 0); }
+  }
+
+  @keyframes pin-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
   }
 
   @media (max-width: 720px) {
@@ -612,20 +661,15 @@ const places = [
       height: 100%;
     }
 
-    /* Labels crowd each other on phones: show markers only; the card names the place. */
+    /* Phones: shorter names on smaller cards. */
     .hotspot__label {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
+      padding: 0.38rem 0.6rem;
+      font-size: 0.6rem;
+      letter-spacing: 0.08em;
     }
 
-    .hotspot__icon {
-      width: 2.6rem;
-      height: 2.6rem;
-    }
+    .hotspot__name { display: none; }
+    .hotspot__short { display: inline; }
 
     .hotspot__card {
       width: min(14rem, 66vw);
@@ -633,7 +677,8 @@ const places = [
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .hotspot__icon { animation: none; }
+    .hotspot__pin,
+    .hotspot__dot { animation: none; }
     .hotspot__card { transition: none; }
   }
 </style>
