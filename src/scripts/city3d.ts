@@ -1868,33 +1868,103 @@ async function buildCity(opts: CityOptions) {
     addGlow(cab.position, 12, 0.4, scene);
   }
 
-  // A plane on final approach to runway 04 (from the south-west), touching down and rolling out.
-  const plane = new THREE.Group();
-  {
-    const body = new THREE.MeshStandardMaterial({ color: 0xe8e6e2, roughness: 0.5, metalness: 0.2 });
-    const fus = new THREE.Mesh(new THREE.CylinderGeometry(1, 0.8, 16, 12).rotateX(Math.PI / 2), body);
-    const wings = new THREE.Mesh(new THREE.BoxGeometry(18, 0.3, 3), body);
-    wings.position.set(0, -0.2, 0.5);
-    const tail = new THREE.Mesh(new THREE.BoxGeometry(6, 0.25, 1.6), body);
-    tail.position.set(0, 0.3, -7);
-    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.25, 3.2, 2), body);
-    fin.position.set(0, 1.8, -7);
-    plane.add(fus, wings, tail, fin);
-    // Landing lights + red/green navigation lights (local: +z = forward).
-    addLights(lightPoints([0, -0.6, 8.4, -2.2, -0.4, 1.4, 2.2, -0.4, 1.4], [3, 2.9, 2.6, 3, 2.9, 2.6, 3, 2.9, 2.6], 4, 0, pixelRatio), plane);
-    addLights(lightPoints([-9, -0.2, 0.5, 9, -0.2, 0.5], [2.6, 0.2, 0.2, 0.2, 2.6, 0.5], 2.4, 0, pixelRatio), plane);
-    scene.add(plane);
-  }
-  const strobe = addLights(lightPoints([-9, 0, 0.5, 9, 0, 0.5, 0, 3.5, -7.5], [3, 3, 3, 3, 3, 3, 3, 3, 3], 3.2, 0, pixelRatio), plane);
+  // ---------- Airliners at Bandaranaike International ----------
+  // A twin-engine wide-body (local +z = nose, +x = left wing): rounded fuselage with nose and
+  // tail cones, swept wings with engines, tailplane and fin, cockpit glass, lit cabin windows.
+  const airlinerParts = (() => {
+    const fuselage = (() => {
+      // Lathe profile (radius, position along the body); rotated so +y becomes the nose (+z).
+      const pts: [number, number][] = [
+        [0.01, -8.4], [0.22, -8.1], [0.45, -7.4], [0.68, -6.2], [0.84, -4.6], [0.86, -3], [0.86, 5.2],
+        [0.83, 6.1], [0.74, 6.9], [0.56, 7.6], [0.3, 8.1], [0.01, 8.35],
+      ];
+      return new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 20).rotateX(Math.PI / 2);
+    })();
+    // Planform (x = span, y = along the body) extruded thin, then laid flat.
+    const flat = (outline: [number, number][], thick: number) => {
+      const shape = new THREE.Shape(outline.map(([x, y]) => new THREE.Vector2(x, y)));
+      return new THREE.ExtrudeGeometry(shape, { depth: thick, bevelEnabled: false }).rotateX(Math.PI / 2).translate(0, thick / 2, 0);
+    };
+    const wing = flat([[0, 2.1], [9.6, -2.5], [9.6, -3.3], [0, -1.7], [-9.6, -3.3], [-9.6, -2.5]], 0.18);
+    const tailplane = flat([[0, -5.9], [3.6, -7.6], [3.6, -8.1], [0, -7.5], [-3.6, -8.1], [-3.6, -7.6]], 0.12);
+    // Fin in the y/z plane.
+    const fin = (() => {
+      const shape = new THREE.Shape([new THREE.Vector2(-5.4, 0.5), new THREE.Vector2(-8.1, 0.5), new THREE.Vector2(-8.5, 3.7), new THREE.Vector2(-7.4, 3.7)]);
+      return new THREE.ExtrudeGeometry(shape, { depth: 0.14, bevelEnabled: false }).rotateY(-Math.PI / 2).translate(0.07, 0, 0);
+    })();
+    const engine = new THREE.CylinderGeometry(0.42, 0.36, 2.3, 16).rotateX(Math.PI / 2);
+    const intake = new THREE.CircleGeometry(0.36, 16);
+    const pylon = new THREE.BoxGeometry(0.12, 0.45, 1.4);
+    const windscreen = new THREE.BoxGeometry(0.62, 0.16, 0.55);
+    return { fuselage, wing, tailplane, fin, engine, intake, pylon, windscreen };
+  })();
+  const liveries = [
+    { tail: 0x1d3f7a, belly: 0xcfd3d8 },
+    { tail: 0x7a1d2e, belly: 0xd8d2cf },
+    { tail: 0x1f6b5c, belly: 0xcfd8d4 },
+    { tail: 0xc49a3a, belly: 0xd8d5cf },
+  ];
+  // Slightly matte off-white so the sunset doesn't make the body glow.
+  const white = new THREE.MeshStandardMaterial({ color: 0xdedcd7, roughness: 0.55, metalness: 0.15 });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x15171b, roughness: 0.4, metalness: 0.4 });
+  const glassMat = new THREE.MeshStandardMaterial({ color: 0x0c1118, roughness: 0.1, metalness: 0.8, emissive: 0x1a2a3a, emissiveIntensity: 0.6 });
+  const makeAirliner = (livery: (typeof liveries)[number], lit: boolean) => {
+    const g = new THREE.Group();
+    const accent = new THREE.MeshStandardMaterial({ color: livery.tail, roughness: 0.35, metalness: 0.3 });
+    const p = airlinerParts;
+    const body = new THREE.Mesh(p.fuselage, white);
+    const wing = new THREE.Mesh(p.wing, white);
+    wing.position.set(0, -0.35, 0);
+    const tailplane = new THREE.Mesh(p.tailplane, white);
+    tailplane.position.set(0, 0.25, 0);
+    const fin = new THREE.Mesh(p.fin, accent);
+    const windscreen = new THREE.Mesh(p.windscreen, glassMat);
+    windscreen.position.set(0, 0.37, 7.2);
+    windscreen.rotation.x = -0.45;
+    g.add(body, wing, tailplane, fin, windscreen);
+    for (const sx of [-3.4, 3.4]) {
+      const eng = new THREE.Mesh(p.engine, accent);
+      eng.position.set(sx, -0.85, 1.25);
+      const intake = new THREE.Mesh(p.intake, darkMat);
+      intake.position.set(sx, -0.85, 2.41);
+      const pylon = new THREE.Mesh(p.pylon, white);
+      pylon.position.set(sx, -0.48, 0.9);
+      g.add(eng, intake, pylon);
+    }
+    // Cabin windows along both sides, and the navigation lights (red = left/+x, green = right).
+    const win: number[] = [];
+    const winCol: number[] = [];
+    if (lit) {
+      for (let z = -5.4; z <= 5.6; z += 0.42) {
+        for (const sx of [-0.87, 0.87]) {
+          win.push(sx, 0.18, z);
+          winCol.push(1.15, 1.0, 0.75);
+        }
+      }
+      addLights(lightPoints(win, winCol, 0.28, 0.05, pixelRatio), g);
+    }
+    // Kept just above the bloom threshold: visible points, not glowing halos.
+    addLights(lightPoints([9.6, -0.3, -2.6, -9.6, -0.3, -2.6, 0, 0.9, -8.4], [1.5, 0.15, 0.12, 0.12, 1.5, 0.35, 1.3, 1.3, 1.3], 0.9, 0, pixelRatio), g);
+    return g;
+  };
+  // Flashing lights (white wing-tip strobes, red beacons above and below), kept separate to blink.
+  const addFlashers = (g: THREE.Group) => ({
+    strobe: addLights(lightPoints([9.7, -0.3, -2.9, -9.7, -0.3, -2.9, 0, 0.4, -8.6], [1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6], 1.1, 0, pixelRatio), g),
+    beacon: addLights(lightPoints([0, 0.95, 0.5, 0, -0.95, 0.5], [1.6, 0.15, 0.12, 1.6, 0.15, 0.12], 1, 0, pixelRatio), g),
+  });
+
+  // 1. Landing: final approach to runway 04 from the south-west, touchdown and roll-out.
+  const plane = makeAirliner(liveries[0], true);
+  addLights(lightPoints([3.2, -0.4, 0.4, -3.2, -0.4, 0.4, 0, -0.7, 7.6], [1.6, 1.55, 1.4, 1.6, 1.55, 1.4, 1.6, 1.55, 1.4], 1.4, 0, pixelRatio), plane); // landing lights
+  const planeLights = addFlashers(plane);
+  scene.add(plane);
   const PLANE_CYCLE = 42; // seconds
+  const touchdown = -RUNWAY.len / 2 + 30;
   const planeAt = (t: number) => {
-    // 0–0.62 approach, 0.62–0.8 flare + roll-out, rest: parked out of sight.
-    const touchdown = -RUNWAY.len / 2 + 30;
+    // 0–0.62 approach, 0.62–0.8 flare + roll-out, rest: off the runway, out of sight.
     if (t < 0.62) {
       const k = t / 0.62;
-      const along = touchdown - (1 - k) * 700;
-      const alt = 2 + (1 - k) * 74;
-      return { along, alt, visible: true };
+      return { along: touchdown - (1 - k) * 700, alt: 2 + (1 - k) * 74, visible: true };
     }
     if (t < 0.8) {
       const k = (t - 0.62) / 0.18;
@@ -1902,6 +1972,34 @@ async function buildCity(opts: CityOptions) {
     }
     return { along: 0, alt: 0, visible: false };
   };
+
+  // 2. Take-off: rolls from the threshold while the lander is still far out, lifts off and climbs
+  //    out to the north-east (cleared from the runway well before the lander touches down).
+  const departure = makeAirliner(liveries[1], true);
+  const departureLights = addFlashers(departure);
+  scene.add(departure);
+  const departureAt = (t: number) => {
+    const start = -RUNWAY.len / 2 + 12;
+    if (t < 0.04 || t > 0.5) return { along: 0, alt: 0, visible: false };
+    if (t < 0.17) {
+      const k = (t - 0.04) / 0.13; // accelerating roll
+      return { along: start + k * k * 170, alt: 2, visible: true };
+    }
+    const k = (t - 0.17) / 0.33; // rotate and climb away
+    return { along: start + 170 + k * 820 + k * k * 260, alt: 2 + k * 70 + k * k * 90, visible: true };
+  };
+
+  // 3. Airliners parked at the terminal gates, noses towards the building.
+  {
+    const gateYaw = Math.atan2(-RUNWAY.dir.z, RUNWAY.dir.x); // nose pointing at the terminal (+perp)
+    [-34, -4, 26].forEach((along, i) => {
+      const parked = makeAirliner(liveries[(i + 1) % liveries.length], false);
+      const pos = runwayPoint(along, 40);
+      parked.position.set(pos.x, 1.35, pos.z);
+      parked.rotation.y = gateYaw;
+      scene.add(parked);
+    });
+  }
 
   // Katunayake Free Trade Zone: big low factory sheds beside the airport
   {
@@ -2304,7 +2402,10 @@ async function buildCity(opts: CityOptions) {
   // Size + visibility
   let width = 1;
   let height = 1;
+  // Name-card sizes, measured once per resize (measuring every frame would force layout).
+  const labelSize = new Map<HTMLElement, { w: number; h: number }>();
   const resize = () => {
+    labelSize.clear(); // name cards change size with the breakpoint
     width = view.container.clientWidth || 1;
     height = view.container.clientHeight || 1;
     renderer.setSize(width, height, false);
@@ -2374,7 +2475,10 @@ async function buildCity(opts: CityOptions) {
     el.classList.toggle("is-hidden", v.z > 1 || x < -margin || x > width + margin || y < -margin || y > height + margin);
     return { x, y };
   };
+  const lifts = new Map<HTMLElement, number>();
+  const placed: { x0: number; x1: number; y0: number; y1: number }[] = [];
   const positionMarkers = () => {
+    const shown: { el: HTMLElement; x: number; y: number }[] = [];
     for (const [id, el] of view.markers) {
       const anchor = view.anchors.get(id);
       if (!anchor) continue;
@@ -2383,6 +2487,36 @@ async function buildCity(opts: CityOptions) {
       el.classList.toggle("hotspot--left", x < width * 0.25);
       const card = el.dataset.card;
       el.classList.toggle("hotspot--below", card === "below" || (card !== "above" && y < height * 0.45));
+      if (!el.classList.contains("is-hidden")) shown.push({ el, x, y });
+    }
+    // Stack overlapping name cards: nearest (lowest on screen) first, others lift above them.
+    shown.sort((a, b) => b.y - a.y);
+    placed.length = 0;
+    const STEM = 14;
+    const PAD = 6;
+    for (const s of shown) {
+      let size = labelSize.get(s.el);
+      if (!size) {
+        const label = s.el.querySelector<HTMLElement>(".hotspot__label");
+        size = { w: label?.offsetWidth ?? 0, h: label?.offsetHeight ?? 0 };
+        labelSize.set(s.el, size);
+      }
+      let lift = 0;
+      const x0 = s.x - size.w / 2 - PAD;
+      const x1 = s.x + size.w / 2 + PAD;
+      for (let tries = 0; tries < shown.length; tries++) {
+        const y1 = s.y - STEM - lift;
+        const y0 = y1 - size.h - PAD;
+        const hit = placed.find((p) => x0 < p.x1 && x1 > p.x0 && y0 < p.y1 && y1 > p.y0);
+        if (!hit) break;
+        lift += y1 - hit.y0;
+      }
+      placed.push({ x0, x1, y0: s.y - STEM - lift - size.h - PAD, y1: s.y - STEM - lift });
+      const rounded = Math.round(lift);
+      if (lifts.get(s.el) !== rounded) {
+        lifts.set(s.el, rounded);
+        s.el.style.setProperty("--lift", `${rounded}px`);
+      }
     }
     view.labels.forEach((l, i) => project(l.el, view.labelPositions[i], -10));
   };
@@ -2403,16 +2537,23 @@ async function buildCity(opts: CityOptions) {
     }
     trafficAttr.needsUpdate = true;
 
-    // Plane approach
+    // Arriving and departing airliners: aim each along its path (so it pitches down on approach
+    // and up on climb-out), and blink the strobes and beacons.
     const cycle = (t % PLANE_CYCLE) / PLANE_CYCLE;
-    const state = planeAt(cycle);
-    plane.visible = state.visible;
-    if (state.visible) {
-      const pos = runwayPoint(state.along).setY(state.alt + 1.4);
-      plane.position.copy(pos);
-      plane.lookAt(pos.clone().add(RUNWAY.dir).setY(pos.y - (cycle < 0.6 ? 0.1 : 0)));
-      strobe.visible = t % 1.3 < 0.08;
-    }
+    const fly = (obj: THREE.Object3D, at: typeof planeAt, lights: ReturnType<typeof addFlashers>, phase: number) => {
+      const s = at(cycle);
+      obj.visible = s.visible;
+      if (!s.visible) return;
+      const next = at(Math.min(cycle + 0.004, 0.999));
+      const pos = runwayPoint(s.along).setY(s.alt + 1.4);
+      obj.position.copy(pos);
+      const ahead = next.visible && next.along !== s.along ? runwayPoint(next.along).setY(next.alt + 1.4) : pos.clone().add(RUNWAY.dir);
+      obj.lookAt(ahead);
+      lights.strobe.visible = (t + phase) % 1.3 < 0.08;
+      lights.beacon.visible = (t + phase) % 1.1 < 0.12;
+    };
+    fly(plane, planeAt, planeLights, 0);
+    fly(departure, departureAt, departureLights, 0.5);
 
     // Boats bobbing and drifting
     boats.forEach((b) => {
@@ -2547,8 +2688,7 @@ async function buildCity(opts: CityOptions) {
   await yieldToBrowser();
   ready = true;
   loop();
-  const controller: CityController = { focus, reset, zoom, highlight };
-  // Another section showing the same city (e.g. the Explore map after the hero).
+  const controller: CityController = { focus, reset, zoom, highlight };  // Another section showing the same city (e.g. the Explore map after the hero).
   const attach = (o: CityOptions) => {
     const v = makeView(o);
     views.push(v);

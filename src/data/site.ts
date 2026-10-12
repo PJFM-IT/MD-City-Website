@@ -41,8 +41,9 @@ export const hotspots = [
   {
     id: "gate",
     label: "City Gate",
+    short: "City Gate",
     fact: "Museum & Accommodation 1",
-    text: "The grand entrance on Katunayake–Veyangoda Road: the museum and Accommodation Building 1, with its lions and globe fountain.",
+    text: "The grand entrance on Katunayakeâ€“Veyangoda Road: the museum and Accommodation Building 1, with its lions and globe fountain.",
     href: "#explore",
     x: "24%",
     y: "10%",
@@ -50,11 +51,12 @@ export const hotspots = [
     image: "cityGate" as const,
   },
   {
-    // The existing Miracle Dome (opened 2022) on Katunayake–Veyangoda Road, ~1.3 km from the airport.
+    // The existing Miracle Dome (opened 2022) on Katunayakeâ€“Veyangoda Road, ~1.3 km from the airport.
     id: "dome",
     label: "The Miracle Dome",
+    short: "Miracle Dome",
     fact: "5,000 seats",
-    text: "The Miracle Dome, opened in 2022 — where the vision began. The new city grows around it.",
+    text: "The Miracle Dome, opened in 2022 â€” where the vision began. The new city grows around it.",
     href: "#contact",
     x: "19.5%",
     y: "37%",
@@ -66,8 +68,9 @@ export const hotspots = [
   {
     id: "facility",
     label: "1,500-Bed Facility",
+    short: "Facility",
     fact: "1,500 beds",
-    text: "Accommodation Buildings 2 and 3 — rooms and food for those travelling long distances.",
+    text: "Accommodation Buildings 2 and 3 â€” rooms and food for those travelling long distances.",
     href: "#facility",
     x: "41.5%",
     y: "14%",
@@ -77,6 +80,7 @@ export const hotspots = [
   {
     id: "zion",
     label: "Zion Grounds",
+    short: "Zion Grounds",
     fact: "24,000 capacity",
     text: "The 24,000-seater crusade grounds: terraced lawns for the multitudes, facing the glass dome stage.",
     href: "#zion-grounds",
@@ -88,8 +92,9 @@ export const hotspots = [
   {
     id: "carmel",
     label: "Carmel Hill",
+    short: "Carmel Hill",
     fact: "Prayer Mountain",
-    text: "A glass prayer dome on a landscaped hill — a place set apart for prayer and encounter.",
+    text: "A glass prayer dome on a landscaped hill â€” a place set apart for prayer and encounter.",
     href: "#carmel-hill",
     x: "33%",
     y: "24%",
@@ -100,6 +105,7 @@ export const hotspots = [
   {
     id: "carpark",
     label: "Large Car Park",
+    short: "Car Park",
     fact: "Built for the crowds",
     text: "Ample parking across the river, linked to the grounds by a footbridge.",
     href: "#city-numbers",
@@ -115,9 +121,10 @@ export const hotspots = [
  * While a value is empty, the section shows its illustrated scene instead.
  */
 export const media = {
-  hero: "",
-  vision: "",
-  filmPoster: "",
+  /** Shown only if the 3D hero can't run. */
+  hero: "/images/renders/aerial-masterplan.webp",
+  vision: "/images/renders/aerial-close.webp",
+  filmPoster: "/images/renders/crusade-grounds-dome-sm.webp",
   /** Architect's aerial masterplan (shown if the 3D map can't run). */
   explore: "/images/renders/aerial-masterplan.webp",
   zion: "/images/renders/crusade-grounds-night.webp",
@@ -125,7 +132,8 @@ export const media = {
   carmel: "/images/renders/carmel-hill.webp",
   facility: "/images/renders/accommodation.webp",
   prosperity: "",
-  visionary: "",
+  /** Official portrait (prophetjerome.com); the section shows it in black and white. */
+  visionary: "/images/photos/prophet-jerome-fernando.webp",
   finalHero: "/images/renders/city-gate-lit.webp",
   /** Real photo of the existing Miracle Dome (shown in its 3D map card). */
   miracleDome: "/images/miracle-dome.webp",
@@ -142,7 +150,7 @@ export const masterplanGallery: GalleryItem[] = [
   { src: "/images/renders/crusade-grounds-day.webp", alt: "Walking up through the grounds towards the dome stage", scene: "zion" },
   { src: "/images/renders/city-gate-lit.webp", alt: "The City Gate at night", scene: "aerial-night" },
   { src: "/images/renders/city-gate.webp", alt: "The City Gate with its lions and globe fountain", scene: "aerial-night" },
-  { src: "/images/renders/city-gate-stone.webp", alt: "The City Gate — stone wall design", scene: "aerial-night" },
+  { src: "/images/renders/city-gate-stone.webp", alt: "The City Gate â€” stone wall design", scene: "aerial-night" },
   { src: "/images/renders/aerial-masterplan-warm.webp", alt: "The masterplan in the morning light", scene: "aerial" },
 ];
 
@@ -153,16 +161,19 @@ export interface GalleryItem {
   scene: SceneName;
 }
 
+// Official high-resolution photos from the ministry's websites (miracle-dome.com, prophetjerome.com).
+// Lead: the ministry's own "Partner Give" photo; the rest are services at the Miracle Dome.
 export const givingGallery: GalleryItem[] = [
-  { src: "", alt: "People lined up to give towards the vision", scene: "queue" },
-  { src: "", alt: "Giving at the table", scene: "giving" },
-  { src: "", alt: "Partners greeting one another", scene: "greeting" },
-  { src: "", alt: "The hall during the day of giving", scene: "hall" },
-  { src: "", alt: "The crowd gathered in worship", scene: "worship" },
+  { src: "/images/photos/partners-giving.webp", alt: "Partners giving towards the vision", scene: "queue" },
+  { src: "/images/photos/dome-service.webp", alt: "A full Miracle Dome during a service", scene: "giving" },
+  { src: "/images/photos/dome-worship.webp", alt: "Worship at the Miracle Dome", scene: "greeting" },
+  { src: "/images/photos/dome-congregation-wide.webp", alt: "The Miracle Dome congregation", scene: "hall" },
+  { src: "/images/photos/dome-service-wide.webp", alt: "The Miracle Dome filled to capacity", scene: "worship" },
 ];
 
+// The real Miracle Dome on its land, then the architect's renders of the city to come.
 export const prosperityGallery: GalleryItem[] = [
-  { src: "", alt: "Partners gathered in prayer on the land", scene: "prayer" },
-  { src: "", alt: "Prophet Jerome Fernando declaring over the land", scene: "declare" },
-  { src: "", alt: "The land at sunset", scene: "land" },
+  { src: "/images/photos/miracle-dome-aerial.webp", alt: "The Miracle Dome and its land in Katunayake", scene: "prayer" },
+  { src: "/images/renders/crusade-grounds-day.webp", alt: "The crusade grounds on the land (architect's render)", scene: "declare" },
+  { src: "/images/renders/aerial-masterplan.webp", alt: "Miracle Dome City in its forest setting (architect's render)", scene: "land" },
 ];
