@@ -489,6 +489,8 @@ const places = [
     letter-spacing: 0.12em;
     text-transform: uppercase;
     white-space: nowrap;
+    /* --nudge (set by the 3D map) keeps the name on screen; the pointer stays on the building. */
+    translate: var(--nudge, 0px) 0;
     transition: border-color 0.3s var(--ease-out), color 0.3s var(--ease-out), background 0.3s var(--ease-out);
   }
 
@@ -500,7 +502,7 @@ const places = [
     top: 100%;
     width: 0.5rem;
     height: 0.5rem;
-    margin: -0.25rem 0 0 -0.25rem;
+    margin: -0.25rem 0 0 calc(-0.25rem - var(--nudge, 0px));
     border-right: 1px solid rgba(228, 197, 122, 0.55);
     border-bottom: 1px solid rgba(228, 197, 122, 0.55);
     background: rgba(12, 14, 18, 0.95);

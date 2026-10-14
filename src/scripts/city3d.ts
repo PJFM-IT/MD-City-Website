@@ -104,6 +104,8 @@ const ROAD_YAW = Math.atan2(-ROAD_DIR.y, ROAD_DIR.x); // rotation.y that turns l
 
 // City Gate: long lit façade parallel to the road, its front (local −z) facing the road.
 const GATE = { x: -80, z: -86, w: 42, d: 7, h: 12 };
+// Museum & Accommodation Building 1: the long green-roofed building beside the gate, along the road.
+const MUSEUM = { x: -36, z: -111, w: 52, d: 13, h: 9 };
 // The Miracle Dome (existing): oval hall, long axis NNW–SSE, glass entrance facing NE towards the gate.
 const DOME = { x: -98, z: -24, rx: 30, rz: 22.4, yaw: -0.884 };
 // Gold crescent walk curving round the Dome's south-east side (world angles, radians).
@@ -188,13 +190,15 @@ function riverMask(x: number, z: number) {
   const half = RIVER_HALF * smoothstep(0, 0.12, at) * (1 - smoothstep(0.88, 1, at));
   return 1 - smoothstep(half - 1.2, half + 0.8, d);
 }
-// Car park: lot of LOT.w × LOT.d across the river from the grounds (footbridge to the stage forecourt).
-const CARPARK = { x: 14, z: 76 };
+// Car park: lot of LOT.w × LOT.d north-east of the crusade grounds, as on the labelled plan
+// (between the grounds' far edge and the river).
+const CARPARK = { x: 150, z: -66 };
 const LOT = { w: 140, d: 26 };
 const FLAT_ZONES = [
   { x: DOME.x, z: DOME.z, rx: 41, rz: 36 },
   { x: -112, z: -64, rx: 24, rz: 15 }, // forecourt between the road and the Dome
   { x: GATE.x, z: GATE.z, rx: 30, rz: 20 },
+  { x: MUSEUM.x, z: MUSEUM.z, rx: 34, rz: 22 },
   { x: FACILITY.x, z: FACILITY.z, rx: 32, rz: 27 },
   { x: ZION.x, z: ZION.z + 2, rx: 26, rz: 26 }, // stage forecourt
 ];
@@ -660,7 +664,12 @@ async function buildCity(opts: CityOptions) {
   // Establishing shot from the south-east, looking north-west: the car park and river in front, the
   // crusade grounds rising behind the dome stage, the Miracle Dome, facility and City Gate beyond,
   // Carmel Hill to the right and the sun setting over the ocean on the left.
-  const HOME = { pos: new THREE.Vector3(170, 82, 215), target: new THREE.Vector3(-22, 8, -24) };
+  // Wide enough to include the carpark north-east of the grounds.
+  const HOME_WIDE = { pos: new THREE.Vector3(205, 100, 235), target: new THREE.Vector3(8, 8, -32) };
+  // Portrait phones: aimed further east and pulled back so the carpark fits the narrow frame too.
+  const HOME_TALL = { pos: new THREE.Vector3(250, 165, 330), target: new THREE.Vector3(22, 8, -40) };
+  const homeView = () => (camera.aspect < 0.8 ? HOME_TALL : HOME_WIDE);
+  const HOME = HOME_WIDE;
   camera.position.copy(HOME.pos);
 
   const timeUniforms: { value: number }[] = [];
@@ -1304,6 +1313,37 @@ async function buildCity(opts: CityOptions) {
   };
   const roofMat = new THREE.MeshStandardMaterial({ color: 0xece4d6, roughness: 0.8 });
 
+  // Museum & Accommodation Building 1: long and low beside the City Gate, parallel to the road, with a
+  // planted green roof (as in the masterplan render) and lit windows on both long sides.
+  {
+    const g = new THREE.Group();
+    g.position.set(MUSEUM.x, 0.2, MUSEUM.z);
+    g.rotation.y = ROAD_YAW;
+    landmarks.add(g);
+    const { map, emissiveMap } = facade(Math.round(MUSEUM.w / 2.4), 3, 31, "#d9d2c4", 0.7);
+    const side = new THREE.MeshStandardMaterial({ map, emissiveMap, emissive: 0xffd59a, emissiveIntensity: 1.3, roughness: 0.6 });
+    const end = new THREE.MeshStandardMaterial({ color: 0xd9d2c4, roughness: 0.7 });
+    const roofGreen = new THREE.MeshStandardMaterial({ color: 0x4d7a2e, roughness: 1 });
+    // Box faces: +x, −x, +y (roof), −y, +z, −z.
+    const block = new THREE.Mesh(new THREE.BoxGeometry(MUSEUM.w, MUSEUM.h, MUSEUM.d), [end, end, roofGreen, end, side, side]);
+    block.position.y = MUSEUM.h / 2;
+    g.add(block);
+    // Shrubs on the planted roof.
+    const shrubs = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), 26);
+    const m = new THREE.Matrix4();
+    const c = new THREE.Color();
+    for (let k = 0; k < 26; k++) {
+      const s = 0.7 + rand() * 0.8;
+      m.compose(new THREE.Vector3(-MUSEUM.w / 2 + 2 + rand() * (MUSEUM.w - 4), MUSEUM.h + 0.3, -MUSEUM.d / 2 + 1.5 + rand() * (MUSEUM.d - 3)), new THREE.Quaternion(), new THREE.Vector3(s * 1.4, s * 0.7, s * 1.4));
+      shrubs.setMatrixAt(k, m);
+      shrubs.setColorAt(k, c.setHSL(0.27 + rand() * 0.05, 0.45, 0.16 + rand() * 0.06));
+    }
+    g.add(shrubs);
+    g.updateMatrixWorld(true);
+    pickProxy("museum", new THREE.BoxGeometry(MUSEUM.w + 4, MUSEUM.h + 6, MUSEUM.d + 6), new THREE.Vector3(MUSEUM.x, MUSEUM.h / 2, MUSEUM.z));
+    pickables[pickables.length - 1].rotation.y = ROAD_YAW;
+  }
+
   // 1,500-bed facility: the two gold-roofed blocks of the aerial render, glazed and lit.
   {
     const goldRoof = new THREE.MeshStandardMaterial({ color: 0x9e8b52, roughness: 0.4, metalness: 0.6 });
@@ -1319,8 +1359,11 @@ async function buildCity(opts: CityOptions) {
       landmarks.add(mesh, cap);
     }
     addGlow(new THREE.Vector3(FACILITY.x, 4, FACILITY.z), 30, 0.2);
-    pickProxy("facility", new THREE.BoxGeometry(58, 22, 30), new THREE.Vector3(FACILITY.x, 10, FACILITY.z));
-    pickables[pickables.length - 1].rotation.y = -0.62;
+    // Each block is its own place: [0] = Accommodation Building 2, [1] = Accommodation Building 3.
+    FACILITY_BLOCKS.forEach((b, i) => {
+      pickProxy(i === 0 ? "acc2" : "acc3", new THREE.BoxGeometry(b.w + 4, b.h + 4, b.d + 4), new THREE.Vector3(b.x, b.h / 2, b.z));
+      pickables[pickables.length - 1].rotation.y = b.yaw;
+    });
   }
 
   await yieldToBrowser();
@@ -1710,6 +1753,7 @@ async function buildCity(opts: CityOptions) {
     // In through the City Gate's east arch, past the facility, over the river to the car park.
     [[-77, -108], [-68.7, -92.5], [-58, -80], [-40, -62], [-28, -38], [-36, 0], [-48, 24], [-58, 40], [-60, 58], [-64, 74], [-57, 86.5]],
     [[-36, 2], [-14, 14], [4, 22]], // to the stage forecourt
+    [[60, -188], [70, -140], [74, -96], [76, -73]], // from the main road down to the carpark
     [[-130, -78], [-112, -64], [-92, -55], [-78, -42]], // Miracle Dome forecourt
     [[-160, 115], [-175, 160], [-200, 205]], // airport access
     [[-57, 86.5], [-60, 160], [-110, 300], [-140, 520]], // south towards Seeduwa / Colombo
@@ -2183,7 +2227,9 @@ async function buildCity(opts: CityOptions) {
   // `rot`: in-plane rotation (same convention as rotation.y) for stretched rings.
   const ringDefs: Record<string, { pos: THREE.Vector3; r: number; sx?: number; rot?: number }> = {
     gate: { pos: new THREE.Vector3(GATE.x, 0.6, GATE.z - 2), r: 13, sx: 2, rot: ROAD_YAW },
-    facility: { pos: new THREE.Vector3(FACILITY.x, 0.6, FACILITY.z), r: 21, sx: 1.6, rot: -0.62 },
+    museum: { pos: new THREE.Vector3(MUSEUM.x, 0.6, MUSEUM.z), r: 12, sx: 2.6, rot: ROAD_YAW },
+    acc2: { pos: new THREE.Vector3(FACILITY_BLOCKS[0].x, 0.6, FACILITY_BLOCKS[0].z), r: 11, sx: 1.6, rot: FACILITY_BLOCKS[0].yaw },
+    acc3: { pos: new THREE.Vector3(FACILITY_BLOCKS[1].x, 0.6, FACILITY_BLOCKS[1].z), r: 11, sx: 1.4, rot: FACILITY_BLOCKS[1].yaw },
     carmel: { pos: new THREE.Vector3(HILL.x, peakY + 0.7, HILL.z), r: HILL.top + 2.5 },
     zion: { pos: new THREE.Vector3(ZION.x, 0.7, ZION.z + 3), r: 22 },
     carpark: { pos: new THREE.Vector3(CARPARK.x, 0.6, CARPARK.z), r: 18, sx: 4.2 },
@@ -2280,8 +2326,8 @@ async function buildCity(opts: CityOptions) {
   const INTRO = {
     fromPos: new THREE.Vector3(560, 300, 700),
     fromTarget: new THREE.Vector3(40, 0, -10),
-    toPos: new THREE.Vector3(186, 88, 230),
-    toTarget: new THREE.Vector3(-18, 6, -22),
+    toPos: new THREE.Vector3(214, 100, 248),
+    toTarget: new THREE.Vector3(6, 6, -30),
     seconds: 9,
   };
   let introStart = 0;
@@ -2325,7 +2371,7 @@ async function buildCity(opts: CityOptions) {
     flight = { fromPos: camera.position.clone(), fromTarget: controls.target.clone(), toPos, toTarget, start: performance.now(), dur: 1600 };
     controls.enabled = false;
   };
-  const focusDistance: Record<string, number> = { carmel: 80, zion: 150, facility: 100, carpark: 125, dome: 115, gate: 85 };
+  const focusDistance: Record<string, number> = { carmel: 80, zion: 150, acc2: 80, acc3: 80, carpark: 125, dome: 115, gate: 85, museum: 95 };
   // Fixed viewing directions (from the target towards the camera), chosen to keep the sunset to
   // the side: Carmel Hill and the grounds from the south, the City Gate from the road (its front),
   // the Miracle Dome from the east over its crescent.
@@ -2333,7 +2379,10 @@ async function buildCity(opts: CityOptions) {
     carmel: new THREE.Vector3(-0.35, 0, 1),
     zion: new THREE.Vector3(0.2, 0, 1),
     gate: new THREE.Vector3(-0.498, 0, -0.867),
-    facility: new THREE.Vector3(0.25, 0, -1),
+    museum: new THREE.Vector3(-0.498, 0, -0.867),
+    acc2: new THREE.Vector3(0.25, 0, -1),
+    acc3: new THREE.Vector3(0.6, 0, 0.8),
+    carpark: new THREE.Vector3(0.3, 0, 1),
     dome: new THREE.Vector3(0.9, 0, 0.45),
   };
 
@@ -2357,7 +2406,7 @@ async function buildCity(opts: CityOptions) {
     highlight(id);
   };
   const reset = () => {
-    flyTo(HOME.pos.clone(), HOME.target.clone());
+    flyTo(homeView().pos.clone(), homeView().target.clone());
     highlight(null);
   };
   const zoom = (factor: number) => {
@@ -2439,8 +2488,8 @@ async function buildCity(opts: CityOptions) {
     controls.enabled = !cinematic;
     controls.autoRotate = !cinematic && !reducedMotion;
     if (!cinematic) {
-      camera.position.copy(next.saved?.pos ?? HOME.pos);
-      controls.target.copy(next.saved?.target ?? HOME.target);
+      camera.position.copy(next.saved?.pos ?? homeView().pos);
+      controls.target.copy(next.saved?.target ?? homeView().target);
       controls.update();
     }
     resize();
@@ -2476,6 +2525,7 @@ async function buildCity(opts: CityOptions) {
     return { x, y };
   };
   const lifts = new Map<HTMLElement, number>();
+  const nudges = new Map<HTMLElement, number>();
   const placed: { x0: number; x1: number; y0: number; y1: number }[] = [];
   const positionMarkers = () => {
     const shown: { el: HTMLElement; x: number; y: number }[] = [];
@@ -2516,6 +2566,13 @@ async function buildCity(opts: CityOptions) {
       if (lifts.get(s.el) !== rounded) {
         lifts.set(s.el, rounded);
         s.el.style.setProperty("--lift", `${rounded}px`);
+      }
+      // Slide names inward at the screen edges so they're never cut off.
+      const EDGE = 8;
+      const nudge = Math.round(Math.max(0, EDGE + size.w / 2 - s.x) - Math.max(0, s.x + size.w / 2 - (width - EDGE)));
+      if (nudges.get(s.el) !== nudge) {
+        nudges.set(s.el, nudge);
+        s.el.style.setProperty("--nudge", `${nudge}px`);
       }
     }
     view.labels.forEach((l, i) => project(l.el, view.labelPositions[i], -10));

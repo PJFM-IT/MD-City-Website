@@ -32,9 +32,11 @@ export const footerLinks = [
 export const CITY_MODEL_URL = "";
 
 /**
- * Explore map points, laid out as in the architect's aerial masterplan.
+ * Explore map points: exactly the facilities on the architect's labelled masterplan
+ * (Design Consortium International), plus the existing Miracle Dome.
  * `x`/`y`: position on the flat aerial render (fallback when 3D isn't available).
  * `anchor`: [x, y, z] position in the 3D city where the marker sits.
+ * `short`: shorter name used on phones.
  * `image`: key of a `media` image shown inside the info card.
  */
 export const hotspots = [
@@ -42,21 +44,34 @@ export const hotspots = [
     id: "gate",
     label: "City Gate",
     short: "City Gate",
-    fact: "Museum & Accommodation 1",
-    text: "The grand entrance on Katunayakeâ€“Veyangoda Road: the museum and Accommodation Building 1, with its lions and globe fountain.",
+    fact: "The way in",
+    text: "The grand entrance on Katunayake–Veyangoda Road, with its lions and globe fountain.",
     href: "#explore",
-    x: "24%",
-    y: "10%",
+    x: "18%",
+    y: "14%",
     anchor: [-80, 16, -86] as [number, number, number],
     image: "cityGate" as const,
   },
   {
-    // The existing Miracle Dome (opened 2022) on Katunayakeâ€“Veyangoda Road, ~1.3 km from the airport.
+    // Right beside the City Gate, along the road (as on the labelled plan).
+    id: "museum",
+    label: "Museum & Accommodation Building 1",
+    short: "Museum & Building 1",
+    fact: "Museum & rooms",
+    text: "The museum and the first accommodation building, next to the City Gate.",
+    href: "#facility",
+    x: "24%",
+    y: "6%",
+    anchor: [-36, 13, -111] as [number, number, number],
+    image: null,
+  },
+  {
+    // The existing Miracle Dome (opened 2022) on Katunayake–Veyangoda Road, ~1.3 km from the airport.
     id: "dome",
     label: "The Miracle Dome",
     short: "Miracle Dome",
     fact: "5,000 seats",
-    text: "The Miracle Dome, opened in 2022 â€” where the vision began. The new city grows around it.",
+    text: "The Miracle Dome, opened in 2022, where the vision began. The new city grows around it.",
     href: "#contact",
     x: "19.5%",
     y: "37%",
@@ -66,35 +81,36 @@ export const hotspots = [
     image: "miracleDome" as const,
   },
   {
-    id: "facility",
-    label: "1,500-Bed Facility",
-    short: "Facility",
+    // Accommodation Buildings 2 and 3 are the two gold-roofed blocks (FACILITY_BLOCKS in city3d.ts).
+    id: "acc2",
+    label: "Accommodation Building 2",
+    short: "Accommodation 2",
     fact: "1,500 beds",
-    text: "Accommodation Buildings 2 and 3 â€” rooms and food for those travelling long distances.",
+    text: "Rooms and food for those travelling long distances to the city.",
     href: "#facility",
-    x: "41.5%",
-    y: "14%",
-    anchor: [-27, 18, -67] as [number, number, number],
+    x: "39%",
+    y: "10%",
+    anchor: [-38, 17, -78] as [number, number, number],
     image: "facility" as const,
   },
   {
-    id: "zion",
-    label: "Zion Grounds",
-    short: "Zion Grounds",
-    fact: "24,000 capacity",
-    text: "The 24,000-seater crusade grounds: terraced lawns for the multitudes, facing the glass dome stage.",
-    href: "#zion-grounds",
-    x: "57.5%",
-    y: "53%",
-    anchor: [24, 16, 32] as [number, number, number],
-    image: "zion" as const,
+    id: "acc3",
+    label: "Accommodation Building 3",
+    short: "Accommodation 3",
+    fact: "1,500 beds",
+    text: "Accommodation for those coming seeking ministry and healing.",
+    href: "#facility",
+    x: "44%",
+    y: "20%",
+    anchor: [-16, 15, -55] as [number, number, number],
+    image: "facility" as const,
   },
   {
     id: "carmel",
-    label: "Carmel Hill",
-    short: "Carmel Hill",
-    fact: "Prayer Mountain",
-    text: "A glass prayer dome on a landscaped hill â€” a place set apart for prayer and encounter.",
+    label: "Prayer Mountain",
+    short: "Prayer Mountain",
+    fact: "Carmel Hill",
+    text: "A glass prayer dome on a landscaped hill, a place set apart for prayer and encounter.",
     href: "#carmel-hill",
     x: "33%",
     y: "24%",
@@ -103,15 +119,28 @@ export const hotspots = [
     image: "carmel" as const,
   },
   {
+    id: "zion",
+    label: "24,000 Seater Crusade Grounds",
+    short: "Crusade Grounds",
+    fact: "Zion Grounds",
+    text: "Terraced lawns for 24,000 people, facing the glass dome stage.",
+    href: "#zion-grounds",
+    x: "57.5%",
+    y: "53%",
+    anchor: [24, 16, 32] as [number, number, number],
+    image: "zion" as const,
+  },
+  {
+    // North-east of the crusade grounds, as on the labelled plan.
     id: "carpark",
-    label: "Large Car Park",
-    short: "Car Park",
+    label: "Carpark",
+    short: "Carpark",
     fact: "Built for the crowds",
-    text: "Ample parking across the river, linked to the grounds by a footbridge.",
+    text: "Parking beside the crusade grounds, on their north-east side.",
     href: "#city-numbers",
-    x: "55%",
-    y: "90%",
-    anchor: [14, 7, 76] as [number, number, number],
+    x: "68%",
+    y: "26%",
+    anchor: [150, 7, -66] as [number, number, number],
     image: null,
   },
 ];
@@ -150,7 +179,7 @@ export const masterplanGallery: GalleryItem[] = [
   { src: "/images/renders/crusade-grounds-day.webp", alt: "Walking up through the grounds towards the dome stage", scene: "zion" },
   { src: "/images/renders/city-gate-lit.webp", alt: "The City Gate at night", scene: "aerial-night" },
   { src: "/images/renders/city-gate.webp", alt: "The City Gate with its lions and globe fountain", scene: "aerial-night" },
-  { src: "/images/renders/city-gate-stone.webp", alt: "The City Gate â€” stone wall design", scene: "aerial-night" },
+  { src: "/images/renders/city-gate-stone.webp", alt: "The City Gate (stone wall design)", scene: "aerial-night" },
   { src: "/images/renders/aerial-masterplan-warm.webp", alt: "The masterplan in the morning light", scene: "aerial" },
 ];
 
