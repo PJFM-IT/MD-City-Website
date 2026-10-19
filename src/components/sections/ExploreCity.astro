@@ -103,14 +103,15 @@ const places = MAP_MODEST ? [] : [
     <p class="explore__hint">
       <span class="explore__hint-hover">Hover a point to explore</span>
       <span class="explore__hint-tap">Tap a point · drag to look around</span>
-      <span class="explore__hint-3d explore__hint-3d--mouse">Drag to rotate · hover a building · click to fly in</span>
-      <span class="explore__hint-3d explore__hint-3d--touch">Swipe sideways to rotate · pinch to zoom · tap a point</span>
+      <span class="explore__hint-3d explore__hint-3d--mouse">Choose a place from the list or click a number · drag to rotate</span>
+      <span class="explore__hint-3d explore__hint-3d--touch">Tap a place below · swipe sideways to rotate</span>
     </p>
   </div>
 
   <!-- The names of the numbered pins: a panel on desktop, a swipeable row of chips on phones.
        Hover lights the building up; click/tap flies to it and opens its card. -->
   <ol class="explore__list" aria-label="Places on the map">
+    <li class="explore__list-head" aria-hidden="true">Places</li>
     {
       spots.map((spot, i) => (
         <li>
@@ -440,6 +441,11 @@ const places = MAP_MODEST ? [] : [
     letter-spacing: 0.4em;
   }
 
+  /* The heading can sit over the map: a soft shadow keeps it readable. */
+  .explore__intro {
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 14px rgba(0, 0, 0, 0.6);
+  }
+
   .explore__intro .display {
     margin-inline: auto;
     max-width: none;
@@ -673,13 +679,14 @@ const places = MAP_MODEST ? [] : [
   /* ---------- Place list (names for the numbered pins) ---------- */
   .explore__list {
     position: absolute;
-    left: clamp(1rem, 3vw, 2.25rem);
+    left: clamp(1rem, 2.4vw, 2rem);
     top: 50%;
     z-index: 4;
     display: grid;
-    gap: 0.15rem;
+    gap: 0;
+    max-width: 17rem;
     margin: 0;
-    padding: 0.7rem 0.5rem;
+    padding: 0.55rem 0.35rem;
     list-style: none;
     border: 1px solid var(--color-line);
     border-radius: 0.6rem;
@@ -688,22 +695,31 @@ const places = MAP_MODEST ? [] : [
     transform: translateY(-40%);
   }
 
+  .explore__list-head {
+    padding: 0.15rem 0.6rem 0.45rem;
+    color: var(--color-stone);
+    font-size: 0.58rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+
   .explore__item {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.55rem;
     width: 100%;
-    padding: 0.4rem 0.7rem 0.4rem 0.45rem;
+    padding: 0.32rem 0.6rem 0.32rem 0.4rem;
     border: 0;
     border-radius: 0.4rem;
     background: none;
     color: rgba(244, 241, 236, 0.86);
     font-family: var(--font-display);
-    font-size: 0.66rem;
-    letter-spacing: 0.1em;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
     text-align: left;
     text-transform: uppercase;
-    white-space: nowrap;
+    white-space: normal;
+    line-height: 1.35;
     cursor: pointer;
     transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out);
   }
@@ -764,6 +780,10 @@ const places = MAP_MODEST ? [] : [
 
     .explore__list::-webkit-scrollbar { display: none; }
 
+    .explore__list { max-width: none; }
+
+    .explore__list-head { display: none; }
+
     .explore__list li { flex: none; scroll-snap-align: start; }
 
     .explore__item {
@@ -774,9 +794,28 @@ const places = MAP_MODEST ? [] : [
       backdrop-filter: blur(6px);
       font-size: 0.6rem;
       letter-spacing: 0.08em;
+      white-space: nowrap;
     }
 
     .explore__item-name { display: none; }
+
+    /* Bigger pins for fingers, plus an invisible ~44 px tap area around each. */
+    .hotspot__dot {
+      width: 1.75rem;
+      height: 1.75rem;
+      font-size: 0.78rem;
+    }
+
+    .hotspot__trigger {
+      position: relative;
+    }
+
+    .hotspot__trigger::before {
+      content: "";
+      position: absolute;
+      inset: -0.5rem;
+      border-radius: 50%;
+    }
     .explore__item-short { display: inline; }
   }
 
