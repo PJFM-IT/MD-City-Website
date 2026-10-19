@@ -702,7 +702,7 @@ async function buildCity(opts: CityOptions, modest: boolean) {
     : { pos: new THREE.Vector3(205, 100, 235), target: new THREE.Vector3(8, 8, -32) };
   // Portrait phones: aimed further east and pulled back so the carpark fits the narrow frame too.
   const HOME_TALL = MODEST
-    ? { pos: new THREE.Vector3(270, 360, 330), target: new THREE.Vector3(22, 0, -40) }
+    ? { pos: new THREE.Vector3(232, 306, 275), target: new THREE.Vector3(22, 0, -40) }
     : { pos: new THREE.Vector3(250, 165, 330), target: new THREE.Vector3(22, 8, -40) };
   const homeView = () => (camera.aspect < 0.8 ? HOME_TALL : HOME_WIDE);
   const HOME = HOME_WIDE;
@@ -2571,7 +2571,9 @@ async function buildCity(opts: CityOptions, modest: boolean) {
     if (cinematic && (width > 900 || camera.aspect > 1.3)) camera.setViewOffset(width, height, -width * 0.18, 0, width, height);
     else if (cinematic) camera.setViewOffset(width, height, 0, -height * 0.2, width, height);
     // Modest Explore map: frame the tile lower so its name cards stay clear of the section heading.
-    else if (modest) camera.setViewOffset(width, height, 0, -height * 0.1, width, height);
+    else if (modest && camera.aspect >= 0.8) camera.setViewOffset(width, height, 0, -height * 0.1, width, height);
+    // Portrait phones: names are in the chip row, so the tile can sit higher and fill the screen.
+    else if (modest) camera.setViewOffset(width, height, 0, height * 0.04, width, height);
     else camera.clearViewOffset();
     camera.updateProjectionMatrix();
   };
