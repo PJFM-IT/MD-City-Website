@@ -1,6 +1,6 @@
 ---
 import Placeholder from "../Placeholder.astro";
-import { CITY_MODEL_URL, hotspots, media } from "../../data/site";
+import { CITY_MODEL_URL, MAP_MODEST, hotspots, media } from "../../data/site";
 
 // Keep info cards on-screen: flip horizontally near the edges, drop below near the top.
 const spots = hotspots.map((spot) => ({
@@ -15,7 +15,8 @@ const spots = hotspots.map((spot) => ({
 const city3d = { modelUrl: CITY_MODEL_URL, spots: hotspots.map(({ id, anchor }) => ({ id, anchor })) };
 
 // Real surroundings of the site in Katunayake (true compass directions, compressed distances).
-const places = [
+// Not shown on the modest map (MAP_MODEST), which has no surroundings.
+const places = MAP_MODEST ? [] : [
   { name: "Indian Ocean", dir: "W", pos: [-520, 6, -120] },
   { name: "Negombo Lagoon", dir: "N", pos: [-150, 4, -270] },
   { name: "Bandaranaike Int'l Airport", dir: "SW", pos: [-265, 12, 255] },
@@ -94,7 +95,8 @@ const places = [
 
   <div class="explore__intro container reveal">
     <p class="eyebrow">Explore</p>
-    <h2 class="display">Miracle Dome City</h2>
+    <!-- Kept for screen readers and search engines; not shown on the map. -->
+    <h2 class="explore__title">Explore Miracle Dome City</h2>
     <p class="tagline explore__sub">A Masterplan for Generations</p>
     <p class="explore__hint">
       <span class="explore__hint-hover">Hover a point to explore</span>
@@ -118,11 +120,21 @@ const places = [
 </section>
 
 <style>
+  /* Exactly one screen below the fixed header, so the "Explore" link shows the whole map. */
   .explore {
     position: relative;
-    height: clamp(560px, 62vw, 820px);
+    height: clamp(520px, calc(100svh - var(--header-h)), 920px);
     overflow: hidden;
     container-type: size;
+  }
+
+  .explore__title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .explore__viewport {
@@ -343,7 +355,7 @@ const places = [
   /* Phones (portrait): use most of the screen height so the map isn't squeezed under the heading. */
   @media (max-width: 720px) and (orientation: portrait) {
     .explore {
-      height: clamp(560px, 92svh, 780px);
+      height: clamp(520px, calc(100svh - var(--header-h)), 820px);
     }
 
     .explore .explore__intro .display {
@@ -489,6 +501,8 @@ const places = [
     letter-spacing: 0.12em;
     text-transform: uppercase;
     white-space: nowrap;
+    /* --nudge (set by the 3D map) keeps the name on screen; the pointer stays on the building. */
+    translate: var(--nudge, 0px) 0;
     transition: border-color 0.3s var(--ease-out), color 0.3s var(--ease-out), background 0.3s var(--ease-out);
   }
 
@@ -500,7 +514,7 @@ const places = [
     top: 100%;
     width: 0.5rem;
     height: 0.5rem;
-    margin: -0.25rem 0 0 -0.25rem;
+    margin: -0.25rem 0 0 calc(-0.25rem - var(--nudge, 0px));
     border-right: 1px solid rgba(228, 197, 122, 0.55);
     border-bottom: 1px solid rgba(228, 197, 122, 0.55);
     background: rgba(12, 14, 18, 0.95);
@@ -674,6 +688,12 @@ const places = [
     .hotspot__card {
       width: min(14rem, 66vw);
     }
+  }
+
+  /* Short screens (e.g. wide laptops): little height for the names, so use the short ones too. */
+  @container (max-height: 760px) {
+    .hotspot__name { display: none; }
+    .hotspot__short { display: inline; }
   }
 
   @media (prefers-reduced-motion: reduce) {
