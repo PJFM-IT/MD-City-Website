@@ -32,6 +32,14 @@ export const footerLinks = [
 export const CITY_MODEL_URL = "";
 
 /**
+ * Modest 3D map (requested by the project owner: the visuals must not look too grand for the
+ * people the city serves): only Miracle Dome City on a simple floating tile, calm daylight,
+ * no glow, beam or spectacle, no airport/ocean/villages. Applies to the Explore map only; the hero
+ * always shows the full dusk city. Set to `false` for the full Explore map as before.
+ */
+export const MAP_MODEST = true;
+
+/**
  * Explore map points: exactly the facilities on the architect's labelled masterplan
  * (Design Consortium International), plus the existing Miracle Dome.
  * `x`/`y`: position on the flat aerial render (fallback when 3D isn't available).
