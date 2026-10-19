@@ -22,6 +22,16 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { SMAAPass } from "three/addons/postprocessing/SMAAPass.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { MAP_MODEST } from "../data/site";
+
+// Modest map (see MAP_MODEST): only the site, on a square floating tile, in calm daylight.
+// Only the Explore map is modest; the hero keeps the full dusk city. Set for the duration of each
+// build (builds run one at a time, see createCity3D) and while that city animates.
+let MODEST = false;
+const TILE = { x: 25, z: -38, half: 235, depth: 18, edge: 14 };
+const BACKGROUND = 0x1f3346; // plain slate-navy backdrop behind the tile
+/** Distance inside the tile's edge (negative = outside the tile). */
+const tileInset = (x: number, z: number) => TILE.half - Math.max(Math.abs(x - TILE.x), Math.abs(z - TILE.z));
 
 export interface CitySpot {
   id: string;
@@ -104,6 +114,8 @@ const ROAD_YAW = Math.atan2(-ROAD_DIR.y, ROAD_DIR.x); // rotation.y that turns l
 
 // City Gate: long lit façade parallel to the road, its front (local −z) facing the road.
 const GATE = { x: -80, z: -86, w: 42, d: 7, h: 12 };
+// Museum & Accommodation Building 1: the long green-roofed building beside the gate, along the road.
+const MUSEUM = { x: -36, z: -111, w: 52, d: 13, h: 9 };
 // The Miracle Dome (existing): oval hall, long axis NNW–SSE, glass entrance facing NE towards the gate.
 const DOME = { x: -98, z: -24, rx: 30, rz: 22.4, yaw: -0.884 };
 // Gold crescent walk curving round the Dome's south-east side (world angles, radians).
@@ -188,13 +200,15 @@ function riverMask(x: number, z: number) {
   const half = RIVER_HALF * smoothstep(0, 0.12, at) * (1 - smoothstep(0.88, 1, at));
   return 1 - smoothstep(half - 1.2, half + 0.8, d);
 }
-// Car park: lot of LOT.w × LOT.d across the river from the grounds (footbridge to the stage forecourt).
-const CARPARK = { x: 14, z: 76 };
+// Car park: lot of LOT.w × LOT.d north-east of the crusade grounds, as on the labelled plan
+// (between the grounds' far edge and the river).
+const CARPARK = { x: 150, z: -66 };
 const LOT = { w: 140, d: 26 };
 const FLAT_ZONES = [
   { x: DOME.x, z: DOME.z, rx: 41, rz: 36 },
   { x: -112, z: -64, rx: 24, rz: 15 }, // forecourt between the road and the Dome
   { x: GATE.x, z: GATE.z, rx: 30, rz: 20 },
+  { x: MUSEUM.x, z: MUSEUM.z, rx: 34, rz: 22 },
   { x: FACILITY.x, z: FACILITY.z, rx: 32, rz: 27 },
   { x: ZION.x, z: ZION.z + 2, rx: 26, rz: 26 }, // stage forecourt
 ];
@@ -268,9 +282,16 @@ function terrainHeight(x: number, z: number) {
   // The central hill country, far inland to the east, as a hazy line on the horizon.
   const hillCountry =
     smoothstep(430, 620, x) * (1 - smoothstep(650, 695, x)) * (36 + 18 * Math.sin(z * 0.012) + 10 * Math.sin(z * 0.031 + x * 0.01));
-  let h = base + hill + hillCountry + bowlHeight(x, z);
+  let h = base + hill + (MODEST ? 0 : hillCountry) + bowlHeight(x, z);
   const flat = flatness(x, z);
   h = h * (1 - flat) + 0.2 * flat;
+  if (MODEST) {
+    // Just the site and its river; a soft bevel down to the tile's side walls.
+    const river = riverMask(x, z);
+    h = h * (1 - river) + -3 * river;
+    const bevel = smoothstep(0, TILE.edge, tileInset(x, z));
+    return h * bevel + -3.6 * (1 - bevel);
+  }
   const air = airportMask(x, z);
   h = h * (1 - air) + 0.45 * air;
   const water = Math.max(lagoonMask(x, z), oceanMask(x, z), riverMask(x, z));
@@ -311,6 +332,7 @@ function inPaddy(x: number, z: number) {
 /** Free land for trees/houses: above water, off the landmarks, airfield and paddies. */
 function freeLand(x: number, z: number) {
   if (Math.abs(x) > TERRAIN_SIZE / 2 - 10 || Math.abs(z) > TERRAIN_SIZE / 2 - 10) return false;
+  if (MODEST && tileInset(x, z) < TILE.edge + 4) return false;
   if (terrainHeight(x, z) < 0.35) return false;
   if (flatness(x, z) > 0.02 || airportMask(x, z) > 0.02 || inPaddy(x, z)) return false;
   if (Math.hypot(x - FTZ.x, z - FTZ.z) < 55) return false;
@@ -422,7 +444,8 @@ function lightPoints(positions: number[], colors: number[], size: number, twinkl
   const count = positions.length / 3;
   const seeds = new Float32Array(count).map(() => Math.random());
   geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geo.setAttribute("aColor", new THREE.Float32BufferAttribute(colors, 3));
+  // Modest map: lamps, windows and the crowd become small soft points instead of glowing lights.
+  geo.setAttribute("aColor", new THREE.Float32BufferAttribute(MODEST ? colors.map((c) => c * 0.45) : colors, 3));
   geo.setAttribute("aSeed", new THREE.BufferAttribute(seeds, 1));
   const mat = new THREE.ShaderMaterial({
     transparent: true,
@@ -581,26 +604,37 @@ function addSway(mat: THREE.Material, time: { value: number }, amount: number, h
  * view, and the canvas moves to whichever section is on screen. (Two separate cities doubled the
  * loading work and graphics memory, which made phones lag.)
  */
-let shared: Promise<{ controller: CityController; attach: (o: CityOptions) => CityController }> | null = null;
 
 export async function createCity3D(opts: CityOptions): Promise<CityController> {
-  if (shared) {
+  // The hero shows the full dusk city; the Explore map the modest one when MAP_MODEST is on.
+  // Views that want the same look share one city; different looks get their own.
+  const modest = !opts.cinematic && MAP_MODEST;
+  const existing = cities.get(modest);
+  if (existing) {
     try {
-      return (await shared).attach(opts);
+      return (await existing).attach(opts);
     } catch {
-      shared = null; // the first build failed; try a fresh one for this view
+      cities.delete(modest); // that build failed; try a fresh one for this view
     }
   }
-  shared = buildCity(opts);
+  // Never build two cities at once (it would slow the page down, and MODEST is per build).
+  const build = buildQueue.then(() => {
+    MODEST = modest;
+    return buildCity(opts, modest);
+  });
+  buildQueue = build.catch(() => undefined);
+  cities.set(modest, build);
   try {
-    return (await shared).controller;
+    return (await build).controller;
   } catch (err) {
-    shared = null;
+    cities.delete(modest);
     throw err;
   }
 }
+const cities = new Map<boolean, Promise<{ controller: CityController; attach: (o: CityOptions) => CityController }>>();
+let buildQueue: Promise<unknown> = Promise.resolve();
 
-async function buildCity(opts: CityOptions) {
+async function buildCity(opts: CityOptions, modest: boolean) {
   const { reducedMotion } = opts;
   const mobile = window.matchMedia("(pointer: coarse)").matches;
   // Phones and modest computers (≤4 cores or ≤4 GB) get the light tier: fewer trees/houses,
@@ -616,7 +650,7 @@ async function buildCity(opts: CityOptions) {
   const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
   renderer.setPixelRatio(pixelRatio);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.08;
+  renderer.toneMappingExposure = MODEST ? 1.0 : 1.08;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.domElement.className = "city3d__canvas";
 
@@ -652,15 +686,26 @@ async function buildCity(opts: CityOptions) {
   view.container.append(renderer.domElement);
 
   const scene = new THREE.Scene();
-  // Warm, humid coastal haze.
-  const fog = new THREE.FogExp2(0x4b3a46, 0.0015);
+  // Warm, humid coastal haze (modest map: a faint haze in the backdrop colour, plain background).
+  const fog = new THREE.FogExp2(MODEST ? BACKGROUND : 0x4b3a46, MODEST ? 0.0007 : 0.0015);
   scene.fog = fog;
+  if (MODEST) scene.background = new THREE.Color(BACKGROUND);
 
   const camera = new THREE.PerspectiveCamera(38, 1, 1, 3000);
   // Establishing shot from the south-east, looking north-west: the car park and river in front, the
   // crusade grounds rising behind the dome stage, the Miracle Dome, facility and City Gate beyond,
   // Carmel Hill to the right and the sun setting over the ocean on the left.
-  const HOME = { pos: new THREE.Vector3(170, 82, 215), target: new THREE.Vector3(-22, 8, -24) };
+  // Wide enough to include the carpark north-east of the grounds.
+  // Modest map: a higher, "board game" angle looking down on the whole tile.
+  const HOME_WIDE = MODEST
+    ? { pos: new THREE.Vector3(249, 298, 298), target: new THREE.Vector3(14, 0, -34) }
+    : { pos: new THREE.Vector3(205, 100, 235), target: new THREE.Vector3(8, 8, -32) };
+  // Portrait phones: aimed further east and pulled back so the carpark fits the narrow frame too.
+  const HOME_TALL = MODEST
+    ? { pos: new THREE.Vector3(270, 360, 330), target: new THREE.Vector3(22, 0, -40) }
+    : { pos: new THREE.Vector3(250, 165, 330), target: new THREE.Vector3(22, 8, -40) };
+  const homeView = () => (camera.aspect < 0.8 ? HOME_TALL : HOME_WIDE);
+  const HOME = HOME_WIDE;
   camera.position.copy(HOME.pos);
 
   const timeUniforms: { value: number }[] = [];
@@ -669,9 +714,9 @@ async function buildCity(opts: CityOptions) {
   const time = { value: 0 };
   timeUniforms.push(time);
 
-  // Sky, stars, clouds
-  scene.add(new THREE.Mesh(new THREE.SphereGeometry(1300, 48, 24), skyMaterial()));
-  {
+  // Sky, stars, clouds (none on the modest map: just the plain backdrop)
+  if (!MODEST) scene.add(new THREE.Mesh(new THREE.SphereGeometry(1300, 48, 24), skyMaterial()));
+  if (!MODEST) {
     const pos: number[] = [];
     const col: number[] = [];
     for (let i = 0; i < 260; i++) {
@@ -683,7 +728,7 @@ async function buildCity(opts: CityOptions) {
     }
     scene.add(lightPoints(pos, col, 2, 1, pixelRatio));
   }
-  {
+  if (!MODEST) {
     const textures = [cloudTexture(1), cloudTexture(2), cloudTexture(3)];
     for (let i = 0; i < 16; i++) {
       const a = (i / 16) * Math.PI * 2 + rand() * 0.3;
@@ -706,29 +751,51 @@ async function buildCity(opts: CityOptions) {
   }
 
   // Lights: low sun in the west, cool fill from the east.
-  scene.add(new THREE.HemisphereLight(0x9a7c94, 0x1f2a18, 1.35));
-  const sun = new THREE.DirectionalLight(0xffa86a, 2.5);
-  sun.position.copy(SUN_DIR).multiplyScalar(400).setY(120);
+  // Modest map: soft, neutral daylight from higher up instead of the low golden sunset.
+  scene.add(MODEST ? new THREE.HemisphereLight(0xdfe7ef, 0x3e4a34, 1.25) : new THREE.HemisphereLight(0x9a7c94, 0x1f2a18, 1.35));
+  const sun = new THREE.DirectionalLight(MODEST ? 0xfff2e0 : 0xffa86a, MODEST ? 2.0 : 2.5);
+  sun.position.copy(SUN_DIR).multiplyScalar(400).setY(MODEST ? 380 : 120);
   scene.add(sun);
-  const fill = new THREE.DirectionalLight(0x6f7ba8, 0.55);
+  const fill = new THREE.DirectionalLight(0x6f7ba8, MODEST ? 0.45 : 0.55);
   fill.position.set(300, 160, 100);
   scene.add(fill);
 
   // Water: Indian Ocean + Negombo Lagoon (terrain dips below this plane)
   {
-    const water = new THREE.Mesh(new THREE.CircleGeometry(1250, 96), waterMaterial(fog));
+    // Modest map: only under the tile (shows in the river), in calm daytime blues.
+    const inner = (TILE.half - TILE.edge) * 2;
+    const water = new THREE.Mesh(MODEST ? new THREE.PlaneGeometry(inner, inner) : new THREE.CircleGeometry(1250, 96), waterMaterial(fog));
     water.rotation.x = -Math.PI / 2;
     water.position.y = WATER_Y;
+    if (MODEST) {
+      water.position.set(TILE.x, WATER_Y, TILE.z);
+      const u = (water.material as THREE.ShaderMaterial).uniforms;
+      u.uDeep.value.set("#2b5670");
+      u.uSky.value.set("#7ea6bd");
+      u.uHorizon.value.set("#a7c3d1");
+      u.uSun.value.set("#556066");
+    }
     timeUniforms.push((water.material as THREE.ShaderMaterial).uniforms.uTime);
     scene.add(water);
+  }
+
+  // The tile's side walls: a solid stone slab under the ground, like a scale model on a plinth.
+  if (MODEST) {
+    const w = TILE.half * 2;
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(w, TILE.depth, w), new THREE.MeshStandardMaterial({ color: 0x8b857a, roughness: 0.9 }));
+    slab.position.set(TILE.x, -3.6 - TILE.depth / 2 + 0.05, TILE.z);
+    scene.add(slab);
   }
 
   await yieldToBrowser();
   // Terrain with vertex colours: lush lowland, beaches, mangrove edges, paved plots, hazy hill country
   {
-    const segs = Math.round(280 * (lowEnd ? 0.7 : 1));
-    const geo = new THREE.PlaneGeometry(TERRAIN_SIZE, TERRAIN_SIZE, segs, segs);
+    // Modest map: exactly the tile (same detail per metre, far fewer vertices).
+    const size = MODEST ? TILE.half * 2 : TERRAIN_SIZE;
+    const segs = Math.round((MODEST ? 160 : 280) * (lowEnd ? 0.7 : 1));
+    const geo = new THREE.PlaneGeometry(size, size, segs, segs);
     geo.rotateX(-Math.PI / 2);
+    if (MODEST) geo.translate(TILE.x, 0, TILE.z);
     const p = geo.attributes.position as THREE.BufferAttribute;
     const colors: number[] = [];
     const lush = new THREE.Color("#2f4a20");
@@ -768,11 +835,12 @@ async function buildCity(opts: CityOptions) {
       if (rd < RIVER_HALF + 4) c.lerp(bank, 1 - smoothstep(RIVER_HALF + 1, RIVER_HALF + 4, rd));
       const shore = x - coastX(z);
       if (shore > -4 && shore < 16) c.lerp(sand, 1 - smoothstep(8, 16, shore));
-      const lag = lagoonMask(x, z);
+      const lag = MODEST ? 0 : lagoonMask(x, z);
       if (lag > 0.02) c.lerp(mud, Math.min(1, lag * 3));
       c.lerp(paved, flatness(x, z) * 0.85);
       c.lerp(airfield, airportMask(x, z) * 0.6);
       c.lerp(hills, smoothstep(400, 650, x));
+      if (MODEST) c.lerp(bank, 1 - smoothstep(TILE.edge * 0.4, TILE.edge, tileInset(x, z))); // stone bevel
       colors.push(c.r, c.g, c.b);
     }
     geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
@@ -797,7 +865,8 @@ async function buildCity(opts: CityOptions) {
   };
   const glow = glowTexture();
   const addGlow = (pos: THREE.Vector3, scale: number, opacity = 0.9, parent: THREE.Object3D = landmarks) => {
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity }));
+    // Modest map: barely-there glows.
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: MODEST ? opacity * 0.15 : opacity }));
     s.position.copy(pos);
     s.scale.setScalar(scale);
     parent.add(s);
@@ -1111,7 +1180,7 @@ async function buildCity(opts: CityOptions) {
     beamFade = beamMat.uniforms.uFade;
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(11, 1.6, 170, 32, 1, true), beamMat);
     beam.position.set(STAGE.x, 86, STAGE.z);
-    landmarks.add(beam);
+    if (!MODEST) landmarks.add(beam);
 
     // Floodlight towers along the top of the grounds, aimed at the stage.
     const poleMat = new THREE.MeshStandardMaterial({ color: 0x1b1b1f, roughness: 0.6 });
@@ -1304,6 +1373,37 @@ async function buildCity(opts: CityOptions) {
   };
   const roofMat = new THREE.MeshStandardMaterial({ color: 0xece4d6, roughness: 0.8 });
 
+  // Museum & Accommodation Building 1: long and low beside the City Gate, parallel to the road, with a
+  // planted green roof (as in the masterplan render) and lit windows on both long sides.
+  {
+    const g = new THREE.Group();
+    g.position.set(MUSEUM.x, 0.2, MUSEUM.z);
+    g.rotation.y = ROAD_YAW;
+    landmarks.add(g);
+    const { map, emissiveMap } = facade(Math.round(MUSEUM.w / 2.4), 3, 31, "#d9d2c4", 0.7);
+    const side = new THREE.MeshStandardMaterial({ map, emissiveMap, emissive: 0xffd59a, emissiveIntensity: 1.3, roughness: 0.6 });
+    const end = new THREE.MeshStandardMaterial({ color: 0xd9d2c4, roughness: 0.7 });
+    const roofGreen = new THREE.MeshStandardMaterial({ color: 0x4d7a2e, roughness: 1 });
+    // Box faces: +x, −x, +y (roof), −y, +z, −z.
+    const block = new THREE.Mesh(new THREE.BoxGeometry(MUSEUM.w, MUSEUM.h, MUSEUM.d), [end, end, roofGreen, end, side, side]);
+    block.position.y = MUSEUM.h / 2;
+    g.add(block);
+    // Shrubs on the planted roof.
+    const shrubs = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), 26);
+    const m = new THREE.Matrix4();
+    const c = new THREE.Color();
+    for (let k = 0; k < 26; k++) {
+      const s = 0.7 + rand() * 0.8;
+      m.compose(new THREE.Vector3(-MUSEUM.w / 2 + 2 + rand() * (MUSEUM.w - 4), MUSEUM.h + 0.3, -MUSEUM.d / 2 + 1.5 + rand() * (MUSEUM.d - 3)), new THREE.Quaternion(), new THREE.Vector3(s * 1.4, s * 0.7, s * 1.4));
+      shrubs.setMatrixAt(k, m);
+      shrubs.setColorAt(k, c.setHSL(0.27 + rand() * 0.05, 0.45, 0.16 + rand() * 0.06));
+    }
+    g.add(shrubs);
+    g.updateMatrixWorld(true);
+    pickProxy("museum", new THREE.BoxGeometry(MUSEUM.w + 4, MUSEUM.h + 6, MUSEUM.d + 6), new THREE.Vector3(MUSEUM.x, MUSEUM.h / 2, MUSEUM.z));
+    pickables[pickables.length - 1].rotation.y = ROAD_YAW;
+  }
+
   // 1,500-bed facility: the two gold-roofed blocks of the aerial render, glazed and lit.
   {
     const goldRoof = new THREE.MeshStandardMaterial({ color: 0x9e8b52, roughness: 0.4, metalness: 0.6 });
@@ -1319,8 +1419,11 @@ async function buildCity(opts: CityOptions) {
       landmarks.add(mesh, cap);
     }
     addGlow(new THREE.Vector3(FACILITY.x, 4, FACILITY.z), 30, 0.2);
-    pickProxy("facility", new THREE.BoxGeometry(58, 22, 30), new THREE.Vector3(FACILITY.x, 10, FACILITY.z));
-    pickables[pickables.length - 1].rotation.y = -0.62;
+    // Each block is its own place: [0] = Accommodation Building 2, [1] = Accommodation Building 3.
+    FACILITY_BLOCKS.forEach((b, i) => {
+      pickProxy(i === 0 ? "acc2" : "acc3", new THREE.BoxGeometry(b.w + 4, b.h + 4, b.d + 4), new THREE.Vector3(b.x, b.h / 2, b.z));
+      pickables[pickables.length - 1].rotation.y = b.yaw;
+    });
   }
 
   await yieldToBrowser();
@@ -1710,6 +1813,7 @@ async function buildCity(opts: CityOptions) {
     // In through the City Gate's east arch, past the facility, over the river to the car park.
     [[-77, -108], [-68.7, -92.5], [-58, -80], [-40, -62], [-28, -38], [-36, 0], [-48, 24], [-58, 40], [-60, 58], [-64, 74], [-57, 86.5]],
     [[-36, 2], [-14, 14], [4, 22]], // to the stage forecourt
+    [[60, -188], [70, -140], [74, -96], [76, -73]], // from the main road down to the carpark
     [[-130, -78], [-112, -64], [-92, -55], [-78, -42]], // Miracle Dome forecourt
     [[-160, 115], [-175, 160], [-200, 205]], // airport access
     [[-57, 86.5], [-60, 160], [-110, 300], [-140, 520]], // south towards Seeduwa / Colombo
@@ -1720,7 +1824,10 @@ async function buildCity(opts: CityOptions) {
     const streetPos: number[] = [];
     const streetCol: number[] = [];
     roads.forEach((curve, ri) => {
+      if (MODEST && ri >= 5) return; // roads leading off the site
       const half = ri === 0 ? 2.8 : 2;
+      // Modest map: roads stop at the tile's edge.
+      const onTile = (t: number) => !MODEST || tileInset(curve.getPointAt(t).x, curve.getPointAt(t).z) > TILE.edge + 2;
       const steps = Math.max(8, Math.round(curve.getLength() / 2));
       const verts: number[] = [];
       const idx: number[] = [];
@@ -1735,8 +1842,8 @@ async function buildCity(opts: CityOptions) {
           const z = p.z + nz * half * s;
           verts.push(x, Math.max(terrainHeight(x, z), WATER_Y + 0.4) + 0.35, z);
         }
-        if (i < steps) idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
-        if (i % 7 === 0) {
+        if (i < steps && onTile(t) && onTile((i + 1) / steps)) idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
+        if (i % 7 === 0 && !MODEST) {
           const x = p.x + nx * (half + 1.2);
           const z = p.z + nz * (half + 1.2);
           streetPos.push(x, terrainHeight(x, z) + 3, z);
@@ -1752,7 +1859,8 @@ async function buildCity(opts: CityOptions) {
     addLights(lightPoints(streetPos, streetCol, 1.5, 0.4, pixelRatio));
   }
   // Tuk-tuks and buses: head- and tail-lights moving along the main road.
-  const traffic = { count: 44, t: Array.from({ length: 44 }, () => rand()), speed: Array.from({ length: 44 }, () => 0.008 + rand() * 0.008) };
+  const TRAFFIC = MODEST ? 0 : 44;
+  const traffic = { count: TRAFFIC, t: Array.from({ length: TRAFFIC }, () => rand()), speed: Array.from({ length: TRAFFIC }, () => 0.008 + rand() * 0.008) };
   const trafficCol: number[] = [];
   for (let i = 0; i < traffic.count; i++) trafficCol.push(...(i % 2 ? [2.6, 0.45, 0.3] : [2.6, 2.3, 1.9]));
   const trafficPts = addLights(lightPoints(new Array(traffic.count * 3).fill(0), trafficCol, 1.8, 0, pixelRatio));
@@ -1760,7 +1868,7 @@ async function buildCity(opts: CityOptions) {
 
   await yieldToBrowser();
   // Rice paddies: bright green and freshly flooded fields (reflecting the sunset)
-  {
+  if (!MODEST) {
     const cellGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
     const total = PADDIES.reduce((s, p) => s + p.cols * p.rows, 0);
     const green = new THREE.InstancedMesh(cellGeo, new THREE.MeshStandardMaterial({ roughness: 0.9 }), total);
@@ -1802,7 +1910,7 @@ async function buildCity(opts: CityOptions) {
       0.6,
       RUNWAY.cz + RUNWAY.dir.z * along + RUNWAY.dir.x * perp,
     );
-  {
+  if (!MODEST) {
     const tex = canvasTexture(64, 1024, (ctx) => {
       ctx.fillStyle = "#2b2b2e";
       ctx.fillRect(0, 0, 64, 1024);
@@ -1957,7 +2065,7 @@ async function buildCity(opts: CityOptions) {
   const plane = makeAirliner(liveries[0], true);
   addLights(lightPoints([3.2, -0.4, 0.4, -3.2, -0.4, 0.4, 0, -0.7, 7.6], [1.6, 1.55, 1.4, 1.6, 1.55, 1.4, 1.6, 1.55, 1.4], 1.4, 0, pixelRatio), plane); // landing lights
   const planeLights = addFlashers(plane);
-  scene.add(plane);
+  if (!MODEST) scene.add(plane);
   const PLANE_CYCLE = 42; // seconds
   const touchdown = -RUNWAY.len / 2 + 30;
   const planeAt = (t: number) => {
@@ -1977,7 +2085,7 @@ async function buildCity(opts: CityOptions) {
   //    out to the north-east (cleared from the runway well before the lander touches down).
   const departure = makeAirliner(liveries[1], true);
   const departureLights = addFlashers(departure);
-  scene.add(departure);
+  if (!MODEST) scene.add(departure);
   const departureAt = (t: number) => {
     const start = -RUNWAY.len / 2 + 12;
     if (t < 0.04 || t > 0.5) return { along: 0, alt: 0, visible: false };
@@ -1990,7 +2098,7 @@ async function buildCity(opts: CityOptions) {
   };
 
   // 3. Airliners parked at the terminal gates, noses towards the building.
-  {
+  if (!MODEST) {
     const gateYaw = Math.atan2(-RUNWAY.dir.z, RUNWAY.dir.x); // nose pointing at the terminal (+perp)
     [-34, -4, 26].forEach((along, i) => {
       const parked = makeAirliner(liveries[(i + 1) % liveries.length], false);
@@ -2002,7 +2110,7 @@ async function buildCity(opts: CityOptions) {
   }
 
   // Katunayake Free Trade Zone: big low factory sheds beside the airport
-  {
+  if (!MODEST) {
     const shed = new THREE.MeshStandardMaterial({ color: 0x9aa0a8, roughness: 0.6, metalness: 0.2 });
     for (let i = 0; i < 12; i++) {
       const x = FTZ.x + (i % 4) * 28 - 42 + (rand() - 0.5) * 6;
@@ -2025,7 +2133,7 @@ async function buildCity(opts: CityOptions) {
 
   await yieldToBrowser();
   // Villages: whitewashed / pastel houses with red clay-tile roofs, warm windows
-  {
+  if (!MODEST) {
     const centres = [
       [60, 190], [-120, 150], [175, 62], [300, 8], [-110, -135], [380, -70],
       [-60, 300], [200, 265], [-280, 20], [-320, -60], [460, 60], [260, -260], [-200, -140],
@@ -2071,10 +2179,11 @@ async function buildCity(opts: CityOptions) {
   {
     const palmMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide });
     addSway(palmMat, time, reducedMotion ? 0 : 0.35, 8);
-    const PALMS = Math.round(2600 * detail);
+    // Modest map: a light ring of trees framing the site, the middle kept open.
+    const PALMS = Math.round((MODEST ? 380 : 2600) * detail);
     const palms = new THREE.InstancedMesh(palmGeometry(), palmMat, PALMS);
     const crownMat = new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true });
-    const CROWNS = Math.round(900 * detail);
+    const CROWNS = Math.round((MODEST ? 320 : 900) * detail);
     const crowns = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1).translate(0, 1.2, 0), crownMat, CROWNS);
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
@@ -2087,10 +2196,23 @@ async function buildCity(opts: CityOptions) {
     // Groves: palms cluster in plantations, thin out near paddies and the coast.
     const groveDensity = (x: number, z: number) => 0.55 + 0.45 * Math.sin(x * 0.018 + 1.3) * Math.cos(z * 0.021 - 0.4);
     for (let tries = 0; tries < (PALMS + CROWNS) * 5 && (np < PALMS || nc < CROWNS); tries++) {
-      const x = (rand() - 0.5) * (TERRAIN_SIZE - 300);
-      const z = (rand() - 0.5) * (TERRAIN_SIZE - 300);
-      if (x > 430 || !freeLand(x, z)) continue;
-      if (rand() > groveDensity(x, z)) continue;
+      let x: number;
+      let z: number;
+      if (MODEST) {
+        // Mostly in a band just inside the tile's edge, a few scattered further in.
+        const band = rand() < 0.8 ? TILE.edge + 4 + rand() * 40 : TILE.edge + 44 + rand() * (TILE.half - 60);
+        const side = Math.floor(rand() * 4);
+        const along = (rand() * 2 - 1) * (TILE.half - band);
+        const off = TILE.half - band;
+        x = TILE.x + (side === 0 ? off : side === 1 ? -off : along);
+        z = TILE.z + (side === 2 ? off : side === 3 ? -off : along);
+        if (!freeLand(x, z)) continue;
+      } else {
+        x = (rand() - 0.5) * (TERRAIN_SIZE - 300);
+        z = (rand() - 0.5) * (TERRAIN_SIZE - 300);
+        if (x > 430 || !freeLand(x, z)) continue;
+        if (rand() > groveDensity(x, z)) continue;
+      }
       const y = terrainHeight(x, z) - 0.1;
       if (rand() < 0.72 && np < PALMS) {
         const size = 0.85 + rand() * 0.55;
@@ -2105,7 +2227,7 @@ async function buildCity(opts: CityOptions) {
       }
     }
     // Mangroves fringing Negombo Lagoon.
-    const MANGROVES = Math.round(700 * detail);
+    const MANGROVES = MODEST ? 0 : Math.round(700 * detail);
     const mangroves = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0).translate(0, 0.6, 0), crownMat, MANGROVES);
     let nm = 0;
     for (let tries = 0; tries < MANGROVES * 30 && nm < MANGROVES; tries++) {
@@ -2126,7 +2248,7 @@ async function buildCity(opts: CityOptions) {
   await yieldToBrowser();
   // Oruwa outrigger canoes with lanterns on the lagoon
   const boats: { g: THREE.Group; x: number; z: number; phase: number; heading: number }[] = [];
-  {
+  if (!MODEST) {
     const hull = new THREE.MeshStandardMaterial({ color: 0x3b2a1e, roughness: 0.8 });
     const sail = new THREE.MeshStandardMaterial({ color: 0xd8c7a6, roughness: 0.9, side: THREE.DoubleSide });
     for (let tries = 0; tries < 400 && boats.length < 12; tries++) {
@@ -2175,7 +2297,7 @@ async function buildCity(opts: CityOptions) {
   egretGeo.computeVertexNormals();
   const egrets = new THREE.InstancedMesh(egretGeo, egretMat, EGRETS);
   egrets.frustumCulled = false;
-  scene.add(egrets);
+  if (!MODEST) scene.add(egrets);
   const egretOffsets = Array.from({ length: EGRETS }, () => new THREE.Vector3((rand() - 0.5) * 30, (rand() - 0.5) * 8, (rand() - 0.5) * 30));
 
   // Highlight rings for hover / selection
@@ -2183,7 +2305,9 @@ async function buildCity(opts: CityOptions) {
   // `rot`: in-plane rotation (same convention as rotation.y) for stretched rings.
   const ringDefs: Record<string, { pos: THREE.Vector3; r: number; sx?: number; rot?: number }> = {
     gate: { pos: new THREE.Vector3(GATE.x, 0.6, GATE.z - 2), r: 13, sx: 2, rot: ROAD_YAW },
-    facility: { pos: new THREE.Vector3(FACILITY.x, 0.6, FACILITY.z), r: 21, sx: 1.6, rot: -0.62 },
+    museum: { pos: new THREE.Vector3(MUSEUM.x, 0.6, MUSEUM.z), r: 12, sx: 2.6, rot: ROAD_YAW },
+    acc2: { pos: new THREE.Vector3(FACILITY_BLOCKS[0].x, 0.6, FACILITY_BLOCKS[0].z), r: 11, sx: 1.6, rot: FACILITY_BLOCKS[0].yaw },
+    acc3: { pos: new THREE.Vector3(FACILITY_BLOCKS[1].x, 0.6, FACILITY_BLOCKS[1].z), r: 11, sx: 1.4, rot: FACILITY_BLOCKS[1].yaw },
     carmel: { pos: new THREE.Vector3(HILL.x, peakY + 0.7, HILL.z), r: HILL.top + 2.5 },
     zion: { pos: new THREE.Vector3(ZION.x, 0.7, ZION.z + 3), r: 22 },
     carpark: { pos: new THREE.Vector3(CARPARK.x, 0.6, CARPARK.z), r: 18, sx: 4.2 },
@@ -2237,7 +2361,20 @@ async function buildCity(opts: CityOptions) {
         }`,
     }),
   );
-  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.8, 0.55, 0.84);
+  // Modest map: only a whisper of glow.
+  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), MODEST ? 0.18 : 0.8, 0.55, MODEST ? 0.92 : 0.84);
+  // …and lit surfaces (windows, stage, gate panels, lamp heads) at about a third of their brightness.
+  if (MODEST) {
+    const dimmed = new Set<THREE.Material>(); // materials are shared: dim each one once
+    scene.traverse((o) => {
+      const mats = (o as THREE.Mesh).material;
+      for (const m of Array.isArray(mats) ? mats : mats ? [mats] : []) {
+        if (dimmed.has(m) || (m as THREE.MeshStandardMaterial).emissiveIntensity === undefined) continue;
+        dimmed.add(m);
+        (m as THREE.MeshStandardMaterial).emissiveIntensity *= 0.35;
+      }
+    });
+  }
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
   composer.addPass(new SMAAPass(1, 1));
@@ -2250,7 +2387,7 @@ async function buildCity(opts: CityOptions) {
   controls.rotateSpeed = 0.55;
   controls.zoomSpeed = 0.6;
   controls.minDistance = 55;
-  controls.maxDistance = 480;
+  controls.maxDistance = MODEST ? 620 : 480;
   controls.minPolarAngle = 0.3;
   controls.maxPolarAngle = 1.42;
   controls.autoRotate = !reducedMotion;
@@ -2280,8 +2417,8 @@ async function buildCity(opts: CityOptions) {
   const INTRO = {
     fromPos: new THREE.Vector3(560, 300, 700),
     fromTarget: new THREE.Vector3(40, 0, -10),
-    toPos: new THREE.Vector3(186, 88, 230),
-    toTarget: new THREE.Vector3(-18, 6, -22),
+    toPos: MODEST ? new THREE.Vector3(261, 293, 312) : new THREE.Vector3(214, 100, 248),
+    toTarget: MODEST ? new THREE.Vector3(12, 0, -32) : new THREE.Vector3(6, 6, -30),
     seconds: 9,
   };
   let introStart = 0;
@@ -2325,7 +2462,7 @@ async function buildCity(opts: CityOptions) {
     flight = { fromPos: camera.position.clone(), fromTarget: controls.target.clone(), toPos, toTarget, start: performance.now(), dur: 1600 };
     controls.enabled = false;
   };
-  const focusDistance: Record<string, number> = { carmel: 80, zion: 150, facility: 100, carpark: 125, dome: 115, gate: 85 };
+  const focusDistance: Record<string, number> = { carmel: 80, zion: 150, acc2: 80, acc3: 80, carpark: 125, dome: 115, gate: 85, museum: 95 };
   // Fixed viewing directions (from the target towards the camera), chosen to keep the sunset to
   // the side: Carmel Hill and the grounds from the south, the City Gate from the road (its front),
   // the Miracle Dome from the east over its crescent.
@@ -2333,7 +2470,10 @@ async function buildCity(opts: CityOptions) {
     carmel: new THREE.Vector3(-0.35, 0, 1),
     zion: new THREE.Vector3(0.2, 0, 1),
     gate: new THREE.Vector3(-0.498, 0, -0.867),
-    facility: new THREE.Vector3(0.25, 0, -1),
+    museum: new THREE.Vector3(-0.498, 0, -0.867),
+    acc2: new THREE.Vector3(0.25, 0, -1),
+    acc3: new THREE.Vector3(0.6, 0, 0.8),
+    carpark: new THREE.Vector3(0.3, 0, 1),
     dome: new THREE.Vector3(0.9, 0, 0.45),
   };
 
@@ -2357,7 +2497,7 @@ async function buildCity(opts: CityOptions) {
     highlight(id);
   };
   const reset = () => {
-    flyTo(HOME.pos.clone(), HOME.target.clone());
+    flyTo(homeView().pos.clone(), homeView().target.clone());
     highlight(null);
   };
   const zoom = (factor: number) => {
@@ -2404,8 +2544,16 @@ async function buildCity(opts: CityOptions) {
   let height = 1;
   // Name-card sizes, measured once per resize (measuring every frame would force layout).
   const labelSize = new Map<HTMLElement, { w: number; h: number }>();
+  // Bottom of the section's heading (Explore · tagline · hint), in canvas pixels: cards stay below it.
+  let headingBottom: number | undefined;
+  const measureHeading = () => {
+    const intro = view.container.closest("section")?.querySelector<HTMLElement>(".explore__intro");
+    if (!intro) return undefined;
+    return intro.getBoundingClientRect().bottom - view.container.getBoundingClientRect().top + 10;
+  };
   const resize = () => {
     labelSize.clear(); // name cards change size with the breakpoint
+    headingBottom = undefined; // re-measured on the next frame
     width = view.container.clientWidth || 1;
     height = view.container.clientHeight || 1;
     renderer.setSize(width, height, false);
@@ -2415,11 +2563,15 @@ async function buildCity(opts: CityOptions) {
     camera.aspect = width / height;
     // Keep the whole city in view on tall/narrow screens.
     camera.fov = camera.aspect < 0.7 ? 68 : camera.aspect < 1 ? 58 : camera.aspect < 1.4 ? 46 : 38;
+    // Modest map on very wide, short screens: a little smaller so the name cards have room.
+    if (modest && camera.aspect > 2) camera.fov = 41;
     // Hero on wide screens: shift the picture right so the city sits beside the text.
     // On narrow/portrait screens shift it down instead, so the city sits below the text.
     // Landscape phones count as "wide" too, so the city sits beside the text.
     if (cinematic && (width > 900 || camera.aspect > 1.3)) camera.setViewOffset(width, height, -width * 0.18, 0, width, height);
     else if (cinematic) camera.setViewOffset(width, height, 0, -height * 0.2, width, height);
+    // Modest Explore map: frame the tile lower so its name cards stay clear of the section heading.
+    else if (modest) camera.setViewOffset(width, height, 0, -height * 0.1, width, height);
     else camera.clearViewOffset();
     camera.updateProjectionMatrix();
   };
@@ -2439,8 +2591,8 @@ async function buildCity(opts: CityOptions) {
     controls.enabled = !cinematic;
     controls.autoRotate = !cinematic && !reducedMotion;
     if (!cinematic) {
-      camera.position.copy(next.saved?.pos ?? HOME.pos);
-      controls.target.copy(next.saved?.target ?? HOME.target);
+      camera.position.copy(next.saved?.pos ?? homeView().pos);
+      controls.target.copy(next.saved?.target ?? homeView().target);
       controls.update();
     }
     resize();
@@ -2476,6 +2628,7 @@ async function buildCity(opts: CityOptions) {
     return { x, y };
   };
   const lifts = new Map<HTMLElement, number>();
+  const nudges = new Map<HTMLElement, number>();
   const placed: { x0: number; x1: number; y0: number; y1: number }[] = [];
   const positionMarkers = () => {
     const shown: { el: HTMLElement; x: number; y: number }[] = [];
@@ -2490,6 +2643,7 @@ async function buildCity(opts: CityOptions) {
       if (!el.classList.contains("is-hidden")) shown.push({ el, x, y });
     }
     // Stack overlapping name cards: nearest (lowest on screen) first, others lift above them.
+    if (headingBottom === undefined && shown.length) headingBottom = measureHeading();
     shown.sort((a, b) => b.y - a.y);
     placed.length = 0;
     const STEM = 14;
@@ -2501,21 +2655,46 @@ async function buildCity(opts: CityOptions) {
         size = { w: label?.offsetWidth ?? 0, h: label?.offsetHeight ?? 0 };
         labelSize.set(s.el, size);
       }
+      // Never climb into the heading area at the top of the section.
+      const maxLift = Math.max(0, s.y - STEM - size.h - (headingBottom ?? height * (camera.aspect < 0.8 ? 0.22 : 0.27)));
+      // Slide names inward at the screen edges so they're never cut off.
+      const EDGE = 8;
+      const edgeShift = Math.max(0, EDGE + size.w / 2 - s.x) - Math.max(0, s.x + size.w / 2 - (width - EDGE));
+      // Try straight above first; if that would climb too high, step the card sideways instead.
       let lift = 0;
-      const x0 = s.x - size.w / 2 - PAD;
-      const x1 = s.x + size.w / 2 + PAD;
-      for (let tries = 0; tries < shown.length; tries++) {
-        const y1 = s.y - STEM - lift;
-        const y0 = y1 - size.h - PAD;
-        const hit = placed.find((p) => x0 < p.x1 && x1 > p.x0 && y0 < p.y1 && y1 > p.y0);
-        if (!hit) break;
-        lift += y1 - hit.y0;
+      let shift = 0;
+      let best: { lift: number; shift: number } | null = null;
+      for (const step of [0, 0.55, -0.55, 1.05, -1.05]) {
+        const sx = edgeShift + step * (size.w + PAD);
+        if (s.x + sx - size.w / 2 < EDGE || s.x + sx + size.w / 2 > width - EDGE) continue;
+        const x0 = s.x + sx - size.w / 2 - PAD;
+        const x1 = s.x + sx + size.w / 2 + PAD;
+        let l = 0;
+        for (let tries = 0; tries < shown.length; tries++) {
+          const y1 = s.y - STEM - l;
+          const y0 = y1 - size.h - PAD;
+          const hit = placed.find((p) => x0 < p.x1 && x1 > p.x0 && y0 < p.y1 && y1 > p.y0);
+          if (!hit) break;
+          l += y1 - hit.y0;
+        }
+        if (l <= maxLift) {
+          best = { lift: l, shift: sx };
+          break;
+        }
+        if (!best) best = { lift: maxLift, shift: sx }; // nowhere free: straight above, capped
       }
-      placed.push({ x0, x1, y0: s.y - STEM - lift - size.h - PAD, y1: s.y - STEM - lift });
+      lift = best?.lift ?? 0;
+      shift = best?.shift ?? edgeShift;
+      placed.push({ x0: s.x + shift - size.w / 2 - PAD, x1: s.x + shift + size.w / 2 + PAD, y0: s.y - STEM - lift - size.h - PAD, y1: s.y - STEM - lift });
       const rounded = Math.round(lift);
       if (lifts.get(s.el) !== rounded) {
         lifts.set(s.el, rounded);
         s.el.style.setProperty("--lift", `${rounded}px`);
+      }
+      const nudge = Math.round(shift);
+      if (nudges.get(s.el) !== nudge) {
+        nudges.set(s.el, nudge);
+        s.el.style.setProperty("--nudge", `${nudge}px`);
       }
     }
     view.labels.forEach((l, i) => project(l.el, view.labelPositions[i], -10));
@@ -2632,7 +2811,12 @@ async function buildCity(opts: CityOptions) {
         }
         controls.update();
       }
+      // The ground shape (terrainHeight) depends on which city this is; put it back afterwards in
+      // case the other city is being built right now.
+      const buildMode = MODEST;
+      MODEST = modest;
       animateWorld(reducedMotion ? 9 : t);
+      MODEST = buildMode;
       beamFade.value = smoothstep(70, 150, Math.hypot(camera.position.x - STAGE.x, camera.position.z - STAGE.z));
 
       rings.forEach((ring, id) => {
