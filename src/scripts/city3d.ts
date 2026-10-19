@@ -698,11 +698,11 @@ async function buildCity(opts: CityOptions, modest: boolean) {
   // Wide enough to include the carpark north-east of the grounds.
   // Modest map: a higher, "board game" angle looking down on the whole tile.
   const HOME_WIDE = MODEST
-    ? { pos: new THREE.Vector3(249, 298, 298), target: new THREE.Vector3(14, 0, -34) }
+    ? { pos: new THREE.Vector3(185, 205, 175), target: new THREE.Vector3(40, 0, -42) }
     : { pos: new THREE.Vector3(205, 100, 235), target: new THREE.Vector3(8, 8, -32) };
   // Portrait phones: aimed further east and pulled back so the carpark fits the narrow frame too.
   const HOME_TALL = MODEST
-    ? { pos: new THREE.Vector3(232, 306, 275), target: new THREE.Vector3(22, 0, -40) }
+    ? { pos: new THREE.Vector3(330, 255, -10), target: new THREE.Vector3(45, 0, -38) }
     : { pos: new THREE.Vector3(250, 165, 330), target: new THREE.Vector3(22, 8, -40) };
   const homeView = () => (camera.aspect < 0.8 ? HOME_TALL : HOME_WIDE);
   const HOME = HOME_WIDE;
@@ -2564,21 +2564,34 @@ async function buildCity(opts: CityOptions, modest: boolean) {
     // Keep the whole city in view on tall/narrow screens.
     camera.fov = camera.aspect < 0.7 ? 68 : camera.aspect < 1 ? 58 : camera.aspect < 1.4 ? 46 : 38;
     // Modest map on very wide, short screens: a little smaller so the name cards have room.
-    if (modest && camera.aspect > 2) camera.fov = 41;
+    if (modest && camera.aspect > 2) camera.fov = 44;
     // Hero on wide screens: shift the picture right so the city sits beside the text.
     // On narrow/portrait screens shift it down instead, so the city sits below the text.
     // Landscape phones count as "wide" too, so the city sits beside the text.
     if (cinematic && (width > 900 || camera.aspect > 1.3)) camera.setViewOffset(width, height, -width * 0.18, 0, width, height);
     else if (cinematic) camera.setViewOffset(width, height, 0, -height * 0.2, width, height);
     // Modest Explore map: frame the tile lower so its name cards stay clear of the section heading.
-    else if (modest && camera.aspect >= 0.8) camera.setViewOffset(width, height, 0, -height * 0.1, width, height);
-    // Portrait phones: names are in the chip row, so the tile can sit higher and fill the screen.
-    else if (modest) camera.setViewOffset(width, height, 0, height * 0.04, width, height);
+    // Desktop: the site sits a little right of centre (the place list is on the left) and below the heading.
+    else if (modest && camera.aspect >= 0.8) camera.setViewOffset(width, height, width > 900 ? -width * 0.09 : 0, -height * 0.08, width, height);
+    // Portrait phones: a little lower, close to the row of place chips.
+    else if (modest) camera.setViewOffset(width, height, 0, -height * 0.05, width, height);
     else camera.clearViewOffset();
     camera.updateProjectionMatrix();
   };
   const resizer = new ResizeObserver(() => resize());
   resize();
+  // Start from the view made for the screen shape (portrait phones differ). The size is often
+  // only known after a few layout passes, so re-apply until the visitor moves the map.
+  let userMoved = false;
+  controls.addEventListener("start", () => (userMoved = true));
+  const applyHome = () => {
+    if (cinematic || userMoved || flight) return;
+    camera.position.copy(homeView().pos);
+    controls.target.copy(homeView().target);
+    controls.update();
+  };
+  applyHome();
+  new ResizeObserver(applyHome).observe(view.container);
 
   // Move the canvas to whichever view is on screen (the interactive map wins if both are).
   const switchTo = (next: View) => {
