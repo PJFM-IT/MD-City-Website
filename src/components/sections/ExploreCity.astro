@@ -69,6 +69,7 @@ const places = MAP_MODEST ? [] : [
             type="button"
             aria-expanded="false"
             aria-controls={`hotspot-${spot.id}`}
+            aria-label={`${spots.indexOf(spot) + 1}. ${spot.label}`}
           >
             {/* A floating name card on a thin stem, pointing down at the building. */}
             <span class="hotspot__pin">
@@ -78,7 +79,8 @@ const places = MAP_MODEST ? [] : [
               </span>
               <span class="hotspot__stem" aria-hidden="true" />
             </span>
-            <span class="hotspot__dot" aria-hidden="true" />
+            {/* On the map each place is just a small numbered pin; its name is in the list. */}
+            <span class="hotspot__dot" aria-hidden="true">{spots.indexOf(spot) + 1}</span>
           </button>
           <div class="hotspot__card" id={`hotspot-${spot.id}`} role="region" aria-label={spot.label}>
             {spot.photo && <img class="hotspot__photo" src={spot.photo} alt="" loading="lazy" />}
@@ -105,6 +107,22 @@ const places = MAP_MODEST ? [] : [
       <span class="explore__hint-3d explore__hint-3d--touch">Swipe sideways to rotate · pinch to zoom · tap a point</span>
     </p>
   </div>
+
+  <!-- The names of the numbered pins: a panel on desktop, a swipeable row of chips on phones.
+       Hover lights the building up; click/tap flies to it and opens its card. -->
+  <ol class="explore__list" aria-label="Places on the map">
+    {
+      spots.map((spot, i) => (
+        <li>
+          <button class="explore__item" type="button" data-place={spot.id}>
+            <span class="explore__num" aria-hidden="true">{i + 1}</span>
+            <span class="explore__item-name">{spot.label}</span>
+            <span class="explore__item-short" aria-hidden="true">{spot.short}</span>
+          </button>
+        </li>
+      ))
+    }
+  </ol>
 
   <div class="explore__controls" aria-label="3D map controls">
     <button type="button" data-city-zoom="in" aria-label="Zoom in">+</button>
@@ -461,10 +479,10 @@ const places = MAP_MODEST ? [] : [
     touch-action: pan-y;
   }
 
-  /* The marker's bottom (the glowing dot) sits exactly on the building. */
+  /* The numbered pin is centred on the building. */
   .hotspot {
     position: absolute;
-    transform: translate(-50%, -100%);
+    transform: translate(-50%, -50%);
   }
 
   .hotspot.is-open {
@@ -481,9 +499,9 @@ const places = MAP_MODEST ? [] : [
     cursor: pointer;
   }
 
-  /* Name card + stem bob gently up and down (staggered per place). */
+  /* Names live in the list (.explore__list) so they never cover the buildings. */
   .hotspot__pin {
-    display: grid;
+    display: none;
     justify-items: center;
     animation: pin-float 3.2s ease-in-out calc(var(--i, 0) * -0.55s) infinite;
   }
@@ -532,19 +550,30 @@ const places = MAP_MODEST ? [] : [
   }
 
   .hotspot__dot {
-    width: 0.55rem;
-    height: 0.55rem;
+    display: grid;
+    place-items: center;
+    width: 1.45rem;
+    height: 1.45rem;
+    border: 1.5px solid var(--color-gold-bright);
     border-radius: 50%;
-    background: var(--color-gold-bright);
+    background: rgba(12, 14, 18, 0.85);
+    color: var(--color-gold-bright);
+    font-family: var(--font-body);
+    font-size: 0.68rem;
+    font-weight: 600;
+    line-height: 1;
     animation: pulse 2.6s ease-out calc(var(--i, 0) * -0.4s) infinite;
+    transition: background 0.25s var(--ease-out), color 0.25s var(--ease-out), transform 0.25s var(--ease-out);
   }
 
-  .hotspot__trigger:hover .hotspot__label,
-  .hotspot.is-open .hotspot__label,
-  .hotspot__trigger:focus-visible .hotspot__label {
-    border-color: var(--color-gold-bright);
-    color: var(--color-gold-bright);
-    background: rgba(28, 24, 16, 0.92);
+  /* Lit: hovered/opened on the map, or its name hovered in the list. */
+  .hotspot__trigger:hover .hotspot__dot,
+  .hotspot__trigger:focus-visible .hotspot__dot,
+  .hotspot.is-open .hotspot__dot,
+  .hotspot.is-lit .hotspot__dot {
+    background: var(--color-gold-bright);
+    color: var(--color-charcoal);
+    transform: scale(1.18);
   }
 
   .hotspot.is-open .hotspot__pin {
@@ -641,6 +670,116 @@ const places = MAP_MODEST ? [] : [
     pointer-events: auto;
   }
 
+  /* ---------- Place list (names for the numbered pins) ---------- */
+  .explore__list {
+    position: absolute;
+    left: clamp(1rem, 3vw, 2.25rem);
+    top: 50%;
+    z-index: 4;
+    display: grid;
+    gap: 0.15rem;
+    margin: 0;
+    padding: 0.7rem 0.5rem;
+    list-style: none;
+    border: 1px solid var(--color-line);
+    border-radius: 0.6rem;
+    background: rgba(10, 12, 16, 0.72);
+    backdrop-filter: blur(8px);
+    transform: translateY(-40%);
+  }
+
+  .explore__item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.4rem 0.7rem 0.4rem 0.45rem;
+    border: 0;
+    border-radius: 0.4rem;
+    background: none;
+    color: rgba(244, 241, 236, 0.86);
+    font-family: var(--font-display);
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out);
+  }
+
+  .explore__num {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border: 1.5px solid var(--color-gold-bright);
+    border-radius: 50%;
+    color: var(--color-gold-bright);
+    font-family: var(--font-body);
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out);
+  }
+
+  .explore__item-short { display: none; }
+
+  .explore__item:hover,
+  .explore__item:focus-visible,
+  .explore__item.is-active {
+    outline: none;
+    background: rgba(228, 197, 122, 0.12);
+    color: var(--color-gold-bright);
+  }
+
+  .explore__item:hover .explore__num,
+  .explore__item:focus-visible .explore__num,
+  .explore__item.is-active .explore__num {
+    background: var(--color-gold-bright);
+    color: var(--color-charcoal);
+  }
+
+  /* Phones: a swipeable row of chips just above the "View the masterplan" button. */
+  @media (max-width: 720px) {
+    .explore__list {
+      left: 0;
+      right: 0;
+      top: auto;
+      bottom: calc(1.6rem + 3.6rem);
+      display: flex;
+      gap: 0.45rem;
+      padding: 0 1rem;
+      overflow-x: auto;
+      border: 0;
+      border-radius: 0;
+      background: none;
+      backdrop-filter: none;
+      transform: none;
+      scroll-snap-type: x proximity;
+      scrollbar-width: none;
+      touch-action: pan-x;
+    }
+
+    .explore__list::-webkit-scrollbar { display: none; }
+
+    .explore__list li { flex: none; scroll-snap-align: start; }
+
+    .explore__item {
+      padding: 0.35rem 0.75rem 0.35rem 0.35rem;
+      border: 1px solid var(--color-line);
+      border-radius: 999px;
+      background: rgba(10, 12, 16, 0.82);
+      backdrop-filter: blur(6px);
+      font-size: 0.6rem;
+      letter-spacing: 0.08em;
+    }
+
+    .explore__item-name { display: none; }
+    .explore__item-short { display: inline; }
+  }
+
   @keyframes pulse {
     0% { box-shadow: 0 0 0 0 rgba(228, 197, 122, 0.6); }
     70% { box-shadow: 0 0 0 10px rgba(228, 197, 122, 0); }
@@ -699,6 +838,7 @@ const places = MAP_MODEST ? [] : [
   @media (prefers-reduced-motion: reduce) {
     .hotspot__pin,
     .hotspot__dot { animation: none; }
+    .explore__list { scroll-behavior: auto; }
     .hotspot__card { transition: none; }
   }
 </style>
@@ -710,10 +850,40 @@ const places = MAP_MODEST ? [] : [
   const spots = Array.from(map?.querySelectorAll<HTMLElement>("[data-hotspot]") ?? []);
   let lastPointer = "mouse";
 
+  // The place list (names for the numbered pins), keyed by place id.
+  const items = new Map(
+    Array.from(document.querySelectorAll<HTMLButtonElement>("[data-place]")).map((b) => [b.dataset.place ?? "", b]),
+  );
+  // Set once the 3D map is up, so the list can fly the camera to a place.
+  let mapCity: { focus: (id: string) => void; highlight: (id: string | null) => void } | null = null;
+
   const setOpen = (spot: HTMLElement, open: boolean) => {
     spot.classList.toggle("is-open", open);
     spot.querySelector("button")?.setAttribute("aria-expanded", String(open));
+    items.get(spot.dataset.hotspot ?? "")?.classList.toggle("is-active", open);
   };
+
+  // Light a place up (pin + list entry + the building's ring), e.g. while its name is hovered.
+  const light = (id: string | null) => {
+    spots.forEach((s) => s.classList.toggle("is-lit", s.dataset.hotspot === id));
+    items.forEach((b, key) => b.classList.toggle("is-lit", key === id));
+    mapCity?.highlight(id);
+  };
+
+  items.forEach((item, id) => {
+    const spot = spots.find((s) => s.dataset.hotspot === id);
+    item.addEventListener("pointerenter", () => light(id));
+    item.addEventListener("pointerleave", () => light(null));
+    item.addEventListener("focus", () => light(id));
+    item.addEventListener("blur", () => light(null));
+    item.addEventListener("click", () => {
+      if (!spot) return;
+      openOnly(spot);
+      mapCity?.focus(id);
+      // Phones: keep the chosen chip in view.
+      item.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    });
+  });
 
   const openOnly = (target: HTMLElement | null) => {
     spots.forEach((spot) => setOpen(spot, spot === target));
@@ -749,7 +919,7 @@ const places = MAP_MODEST ? [] : [
   });
 
   document.addEventListener("click", (event) => {
-    if (!(event.target as HTMLElement).closest("[data-hotspot]")) openOnly(null);
+    if (!(event.target as HTMLElement).closest("[data-hotspot], [data-place]")) openOnly(null);
   });
 
   document.addEventListener("keydown", (event) => {
@@ -816,7 +986,7 @@ const places = MAP_MODEST ? [] : [
           setOpen(hoverOpened, false);
           hoverOpened = null;
         }
-        city?.highlight(id);
+        light(id); // the pin, its name in the list and the building's ring
       },
       onSelect: (id) => {
         openOnly(byId(id));
@@ -833,9 +1003,10 @@ const places = MAP_MODEST ? [] : [
       spot.querySelector("button")?.addEventListener("click", () => {
         if (spot.classList.contains("is-open")) ready.focus(spot.dataset.hotspot ?? "");
       });
-      spot.addEventListener("pointerenter", () => ready.highlight(spot.dataset.hotspot ?? null));
-      spot.addEventListener("pointerleave", () => ready.highlight(null));
+      spot.addEventListener("pointerenter", () => light(spot.dataset.hotspot ?? null));
+      spot.addEventListener("pointerleave", () => light(null));
     });
+    mapCity = ready;
 
     section.querySelector("[data-city-zoom='in']")?.addEventListener("click", () => ready.zoom(0.75));
     section.querySelector("[data-city-zoom='out']")?.addEventListener("click", () => ready.zoom(1.33));
