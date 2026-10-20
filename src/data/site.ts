@@ -209,6 +209,46 @@ export const givingGallery: GalleryItem[] = [
   { src: "/images/photos/dome-service-wide.webp", alt: "The Miracle Dome filled to capacity", scene: "worship" },
 ];
 
+// Opened by "View gallery" on the day of giving; the on-page collage keeps `givingGallery`.
+const givingMomentAlts = [
+  "Prophet Jerome Fernando praying over a partner",
+  "Laying hands on a partner in prayer",
+  "Praying over partners who came to give",
+  "Ministering to partners in the tent",
+  "Praying with partners holding their pledges",
+  "Leading the partners in prayer",
+  "Praying over the partners as they give",
+  "Partners lifting their hands in prayer",
+  "Blessing a partner on bended knee",
+  "Praying for a partner with a walker",
+  "Prayer over a partner who came for healing",
+  "Ministering healing to a partner",
+  "A partner stepping out after prayer",
+  "Walking with a partner after prayer",
+  "Laying hands on partners in the crowd",
+  "Praying over an elderly partner",
+  "Praying over partners side by side",
+  "Praying over the partners at the close of the day",
+  "Prophet Jerome Fernando praying for the partners",
+  "Partners queuing on the land to give",
+  "Partners gathered in the main tent",
+  "The line of partners waiting their turn to give",
+  "Praying over a father and his child",
+  "Praying over partners with the team",
+  "A blessing for a partner holding her pledge",
+  "Praying over a partner and her pledge",
+  "Ministering together with the team",
+  "Speaking with partners after they gave",
+  "Partners praying with open hands",
+  "Praying over the partners in the tent",
+];
+
+export const givingMoments: GalleryItem[] = givingMomentAlts.map((alt, i) => ({
+  src: `/images/photos/giving-moment-${String(i + 1).padStart(2, "0")}.webp`,
+  alt,
+  scene: "giving",
+}));
+
 // The real Miracle Dome on its land, then the architect's renders of the city to come.
 export const prosperityGallery: GalleryItem[] = [
   // Photos from the day on the land ("View moments"), in the order of the day.
