@@ -1,12 +1,12 @@
 ---
 import Scene from "./scenes/Scene.astro";
-import { givingGallery, masterplanGallery, prosperityGallery } from "../data/site";
+import { givingGallery, givingMoments, masterplanGallery, prosperityGallery } from "../data/site";
 
 /**
  * One shared photo lightbox. Open it from anywhere with
  * `<button data-lightbox="giving" data-index="0">` — the key picks the gallery.
  */
-const galleries = { giving: givingGallery, prosperity: prosperityGallery, masterplan: masterplanGallery };
+const galleries = { giving: givingGallery, givingMoments, prosperity: prosperityGallery, masterplan: masterplanGallery };
 
 // Scenes already drawn on the page (marked with data-gallery-item) are cloned from there;
 // only the remaining ones need a template here.
