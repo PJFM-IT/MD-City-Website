@@ -168,7 +168,8 @@ export const media = {
   /** Prayer Mountain and Accommodation Buildings 2 & 3, cropped from the close aerial render. */
   carmel: "/images/renders/carmel-hill.webp",
   facility: "/images/renders/accommodation.webp",
-  prosperity: "",
+  /** Background of "The Hour of Prosperity" (its gallery is prosperityGallery below). */
+  prosperity: "/images/photos/miracle-dome-aerial.webp",
   /** Official portrait (prophetjerome.com); the section shows it in black and white. */
   visionary: "/images/photos/prophet-jerome-fernando.webp",
   finalHero: "/images/renders/city-gate-lit.webp",
@@ -210,7 +211,20 @@ export const givingGallery: GalleryItem[] = [
 
 // The real Miracle Dome on its land, then the architect's renders of the city to come.
 export const prosperityGallery: GalleryItem[] = [
-  { src: "/images/photos/miracle-dome-aerial.webp", alt: "The Miracle Dome and its land in Katunayake", scene: "prayer" },
-  { src: "/images/renders/crusade-grounds-day.webp", alt: "The crusade grounds on the land (architect's render)", scene: "declare" },
-  { src: "/images/renders/aerial-masterplan.webp", alt: "Miracle Dome City in its forest setting (architect's render)", scene: "land" },
+  // Photos from the day on the land ("View moments"), in the order of the day.
+  { src: "/images/photos/land-01.webp", alt: "Partners arriving on the land", scene: "prayer" },
+  { src: "/images/photos/land-02.webp", alt: "Welcomed onto the land by an usher", scene: "prayer" },
+  { src: "/images/photos/land-03.webp", alt: "Partners gathered on the land", scene: "prayer" },
+  { src: "/images/photos/land-04.webp", alt: "Opening the gathering on the land", scene: "declare" },
+  { src: "/images/photos/land-05.webp", alt: "Partners sharing what the day means to them", scene: "declare" },
+  { src: "/images/photos/land-06.webp", alt: "A partner sharing on the land", scene: "declare" },
+  { src: "/images/photos/land-07.webp", alt: "Partners sharing their faith", scene: "declare" },
+  { src: "/images/photos/land-08.webp", alt: "A partner sharing her testimony", scene: "declare" },
+  { src: "/images/photos/land-09.webp", alt: "Partners sharing their story", scene: "declare" },
+  { src: "/images/photos/land-10.webp", alt: "A partner sharing on the land", scene: "declare" },
+  { src: "/images/photos/land-11.webp", alt: "Laying stones of remembrance at the foot of the tree", scene: "land" },
+  { src: "/images/photos/land-12.webp", alt: "Anointing the stones with oil", scene: "land" },
+  { src: "/images/photos/land-13.webp", alt: "Praying over the land", scene: "land" },
+  { src: "/images/photos/land-14.webp", alt: "Partners in prayer on the land", scene: "prayer" },
+  { src: "/images/photos/land-15.webp", alt: "Worship on the land", scene: "prayer" },
 ];
