@@ -175,6 +175,11 @@ const onPage = new Set(["giving-0", "giving-1", "giving-2", "giving-3", "giving-
     const sceneSource = sceneTpl?.content ?? pageScene;
     if (item.src) {
       const img = document.createElement("img");
+      // Photos ship in two sizes; phones get the lighter 960 px one.
+      if (/^\/images\/photos\/.+\.webp$/.test(item.src) && !item.src.endsWith("-960.webp")) {
+        img.srcset = `${item.src.replace(/\.webp$/, "-960.webp")} 960w, ${item.src} 1920w`;
+        img.sizes = "100vw";
+      }
       img.src = item.src;
       img.alt = item.alt;
       node = img;
