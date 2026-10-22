@@ -34,9 +34,9 @@ const [hero, ...collage] = givingGallery;
           <button
             class="historic__shot"
             type="button"
-            data-lightbox="giving"
-            data-index={i + 1}
-            aria-label={`Open photo: ${item.alt}`}
+            data-lightbox="givingMoments"
+            data-index="0"
+            aria-label={`Open the day of giving gallery: ${item.alt}`}
           >
             <Placeholder label={item.alt} src={item.src || undefined} scene={item.scene} seed={i + 3} ratio="auto" />
             <span class="historic__zoom" aria-hidden="true">+</span>
