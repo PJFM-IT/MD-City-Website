@@ -51,8 +51,11 @@ const onPage = new Set(["giving-0", "giving-1", "giving-2", "giving-3", "giving-
 
   .lightbox__stage {
     display: grid;
+    /* Pin the cell to the stage so a photo's own size can't stretch it (and get cropped). */
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
     place-items: center;
     height: min(72svh, 640px);
+    overflow: hidden;
     background: #000;
     touch-action: pan-y;
   }
