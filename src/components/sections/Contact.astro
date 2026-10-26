@@ -1,8 +1,10 @@
 ---
 const formspreeId = import.meta.env.PUBLIC_FORMSPREE_ID?.trim();
+const inquiryEmail =
+  import.meta.env.PUBLIC_INQUIRY_EMAIL?.trim() || "info@prophetjerome.com";
 const formAction = formspreeId
   ? `https://formspree.io/f/${formspreeId}`
-  : "mailto:info@prophetjerome.com";
+  : `mailto:${inquiryEmail}`;
 const usesMailto = !formspreeId;
 ---
 
@@ -13,13 +15,13 @@ const usesMailto = !formspreeId;
       <h2 class="section-title">Be part of the vision</h2>
       <p class="section-lede">
         Share your inquiry and our team will respond by email. Visit the Miracle
-        Dome on Katunayake–Veyangoda Road, Katunayake — or reach Prophet Jerome
-        Fernando Ministries directly.
+        Dome on Katunayake–Veyangoda Road, Katunayake, Sri Lanka — or reach
+        Prophet Jerome Fernando Ministries directly.
       </p>
       <ul class="contact__details">
         <li>
           <span>Email</span>
-          <a href="mailto:info@prophetjerome.com">info@prophetjerome.com</a>
+          <a href={`mailto:${inquiryEmail}`}>{inquiryEmail}</a>
         </li>
         <li>
           <span>Phone</span>
@@ -37,12 +39,20 @@ const usesMailto = !formspreeId;
       action={formAction}
       method={usesMailto ? "GET" : "POST"}
       enctype={usesMailto ? "text/plain" : undefined}
+      data-contact-form
       data-mailto={usesMailto ? "true" : undefined}
     >
-      {!usesMailto && <input type="hidden" name="_subject" value="Miracle Dome City Inquiry" />}
+      {
+        !usesMailto && (
+          <>
+            <input type="hidden" name="_subject" value="Miracle Dome City Inquiry" />
+            <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" class="contact__honeypot" aria-hidden="true" />
+          </>
+        )
+      }
       <label>
         <span>Name</span>
-        <input type="text" name={usesMailto ? "subject" : "name"} required autocomplete="name" data-field="name" />
+        <input type="text" name="name" required autocomplete="name" data-field="name" />
       </label>
       <label>
         <span>Email</span>
@@ -50,9 +60,12 @@ const usesMailto = !formspreeId;
       </label>
       <label>
         <span>Message</span>
-        <textarea name="body" rows="5" required data-field="message"></textarea>
+        <textarea name="message" rows="5" required data-field="message"></textarea>
       </label>
-      <button class="btn btn--solid" type="submit">Send inquiry</button>
+      <button class="btn btn--solid" type="submit" data-submit>
+        Send inquiry
+      </button>
+      <p class="contact__status" data-status hidden></p>
     </form>
   </div>
 </section>
@@ -101,6 +114,14 @@ const usesMailto = !formspreeId;
     gap: 1rem;
   }
 
+  .contact__honeypot {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+  }
+
   label {
     display: grid;
     gap: 0.45rem;
@@ -129,6 +150,19 @@ const usesMailto = !formspreeId;
     border-color: var(--color-gold);
   }
 
+  .contact__status {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  .contact__status.is-success {
+    color: var(--color-gold-bright);
+  }
+
+  .contact__status.is-error {
+    color: #e8a0a0;
+  }
+
   @media (max-width: 860px) {
     .contact__grid {
       grid-template-columns: 1fr;
@@ -136,15 +170,62 @@ const usesMailto = !formspreeId;
   }
 </style>
 
-<script>
-  const form = document.querySelector<HTMLFormElement>("form[data-mailto='true']");
-  form?.addEventListener("submit", (event) => {
+<script define:vars={{ inquiryEmail, usesMailto, formAction }}>
+  const form = document.querySelector("[data-contact-form]");
+  const status = form?.querySelector("[data-status]");
+  const submitBtn = form?.querySelector("[data-submit]");
+
+  const setStatus = (message, type) => {
+    if (!status) return;
+    status.hidden = !message;
+    status.textContent = message;
+    status.classList.toggle("is-success", type === "success");
+    status.classList.toggle("is-error", type === "error");
+  };
+
+  form?.addEventListener("submit", async (event) => {
+    if (usesMailto) {
+      event.preventDefault();
+      const name = form.querySelector("[data-field='name']")?.value.trim() ?? "";
+      const email = form.querySelector("[data-field='email']")?.value.trim() ?? "";
+      const message = form.querySelector("[data-field='message']")?.value.trim() ?? "";
+      const subject = encodeURIComponent(`Miracle Dome City Inquiry — ${name}`);
+      const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\n${message}`);
+      window.location.href = `mailto:${inquiryEmail}?subject=${subject}&body=${body}`;
+      return;
+    }
+
     event.preventDefault();
-    const name = (form.querySelector("[data-field='name']") as HTMLInputElement)?.value.trim() ?? "";
-    const email = (form.querySelector("[data-field='email']") as HTMLInputElement)?.value.trim() ?? "";
-    const message = (form.querySelector("[data-field='message']") as HTMLTextAreaElement)?.value.trim() ?? "";
-    const subject = encodeURIComponent(`Miracle Dome City Inquiry — ${name}`);
-    const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\n${message}`);
-    window.location.href = `mailto:info@prophetjerome.com?subject=${subject}&body=${body}`;
+    setStatus("", "");
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Sending…";
+    }
+
+    try {
+      const response = await fetch(formAction, {
+        method: "POST",
+        body: new FormData(form),
+        headers: { Accept: "application/json" },
+      });
+
+      if (response.ok) {
+        form.reset();
+        setStatus("Thank you. Your inquiry was sent successfully.", "success");
+      } else {
+        const data = await response.json().catch(() => null);
+        const errorMessage =
+          data?.errors?.map((e) => e.message).join(", ") ||
+          "Something went wrong. Please try again.";
+        setStatus(errorMessage, "error");
+      }
+    } catch {
+      setStatus("Network error. Please check your connection and try again.", "error");
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Send inquiry";
+      }
+    }
   });
 </script>
