@@ -108,7 +108,7 @@ const usesMailto = !formspreeId;
 
 <style>
   .contact {
-    background: #0d1014;
+    background: var(--color-charcoal);
     border-top: 1px solid var(--color-line);
   }
 
@@ -188,7 +188,7 @@ const usesMailto = !formspreeId;
     border-radius: 0;
     background:
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23c9a45c' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 1rem center,
-      rgba(255, 255, 255, 0.03);
+      var(--color-surface);
     color: var(--color-white);
     font: inherit;
     outline: none;
@@ -198,7 +198,7 @@ const usesMailto = !formspreeId;
   }
 
   select option {
-    background: #15181d;
+    background: var(--color-surface);
     color: var(--color-white);
   }
 
@@ -207,12 +207,12 @@ const usesMailto = !formspreeId;
   }
 
   input.is-invalid {
-    border-color: #e8a0a0;
+    border-color: var(--color-error);
   }
 
   .contact__field-error {
     margin: 0;
-    color: #e8a0a0;
+    color: var(--color-error);
     font-size: 0.8rem;
   }
 
@@ -227,7 +227,7 @@ const usesMailto = !formspreeId;
     width: 100%;
     padding: 0.9rem 1rem;
     border: 1px solid var(--color-line);
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--color-surface);
     color: var(--color-white);
     outline: none;
     transition: border-color 0.25s var(--ease-out);
@@ -248,7 +248,7 @@ const usesMailto = !formspreeId;
   }
 
   .contact__status.is-error {
-    color: #e8a0a0;
+    color: var(--color-error);
   }
 
   @media (max-width: 860px) {

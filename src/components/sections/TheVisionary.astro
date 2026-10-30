@@ -28,8 +28,7 @@ import { media } from "../../data/site";
     align-items: center;
     min-height: min(56vh, 480px);
     overflow: hidden;
-    background:
-      linear-gradient(90deg, #111 0%, #2c2b29 45%, #8a8680 100%);
+    background: var(--color-charcoal);
   }
 
   .visionary__portrait {
@@ -50,7 +49,7 @@ import { media } from "../../data/site";
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, transparent 55%, #2c2b29 100%);
+    background: linear-gradient(90deg, transparent 60%, var(--color-charcoal) 100%);
   }
 
   .visionary__copy {
@@ -65,7 +64,7 @@ import { media } from "../../data/site";
 
   .visionary__text {
     margin-top: 1rem;
-    color: rgba(244, 241, 236, 0.85);
+    color: var(--color-muted);
     font-size: 0.88rem;
     line-height: 1.65;
   }
@@ -73,13 +72,13 @@ import { media } from "../../data/site";
   @media (max-width: 860px) {
     .visionary {
       grid-template-columns: 1fr;
-      background: linear-gradient(180deg, #111 0%, #2c2b29 100%);
+      background: var(--color-charcoal);
     }
 
     .visionary__portrait { min-height: 380px; }
 
     .visionary__portrait::after {
-      background: linear-gradient(180deg, transparent 60%, #2c2b29 100%);
+      background: linear-gradient(180deg, transparent 65%, var(--color-charcoal) 100%);
     }
   }
 </style>

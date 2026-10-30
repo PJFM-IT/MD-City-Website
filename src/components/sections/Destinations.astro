@@ -36,7 +36,7 @@ const destinations = [
 ] as const;
 ---
 
-<section class="destinations band" id="destinations" aria-label="Destinations">
+<section class="destinations band theme-dark" id="destinations" aria-label="Destinations">
   {
     destinations.map((item, index) => (
       <article class="destination reveal" id={item.id} style={`transition-delay:${index * 0.12}s`}>

@@ -1,15 +1,51 @@
+/*
+ * Colours. Plain sections have a soft beige background with charcoal text; anything with text
+ * over a photo or 3D scene (and the header, footer and photo viewer) adds `.theme-dark` and keeps
+ * the original dark look. Names come from the original dark design:
+ * --color-charcoal = background, --color-white = main text, --color-on-gold = text on gold.
+ */
 :root {
+  --color-charcoal: #f3eadb;
+  --color-charcoal-soft: #eadfca;
+  --color-charcoal-mid: #e0d2b8;
+  --color-surface: #fffdf8;
+  --color-stone: #5c564c;
+  --color-stone-soft: #45403a;
+  --color-gold: #8a6424;
+  --color-gold-bright: #6f4f1a;
+  --color-gold-dim: #b99a62;
+  --color-on-gold: #0c0e12;
+  --color-gold-fill: #c9a45c; /* buttons: same gold in both themes */
+  --color-white: #0c0e12;
+  --color-muted: rgba(12, 14, 18, 0.74);
+  --color-line: rgba(140, 100, 36, 0.25);
+  --color-error: #a3261c;
+  --color-overlay: 243, 234, 219;
+  color-scheme: light;
+}
+
+.theme-dark,
+.modal {
   --color-charcoal: #0c0e12;
   --color-charcoal-soft: #14171d;
   --color-charcoal-mid: #1a1e26;
+  --color-surface: #14171d;
   --color-stone: #b8a78e;
   --color-stone-soft: #d6c8b4;
   --color-gold: #c9a45c;
   --color-gold-bright: #e4c57a;
   --color-gold-dim: #8f7340;
+  --color-on-gold: #0c0e12;
   --color-white: #f4f1ec;
   --color-muted: rgba(244, 241, 236, 0.72);
   --color-line: rgba(201, 164, 92, 0.22);
+  --color-error: #e8a0a0;
+  --color-overlay: 12, 14, 18;
+  color: var(--color-white);
+  color-scheme: dark;
+}
+
+:root {
 
   --font-display: "Cinzel", "Cormorant Garamond", "Times New Roman", serif;
   --font-serif: "Cormorant Garamond", "Times New Roman", serif;
@@ -252,7 +288,7 @@ p {
   padding: 0.6rem 1.4rem;
   border: 1px solid var(--color-gold);
   border-radius: 999px;
-  background: rgba(12, 14, 18, 0.35);
+  background: rgba(var(--color-overlay), 0.35);
   color: var(--color-white);
   font-family: var(--font-body);
   font-size: 0.66rem;
@@ -269,15 +305,17 @@ p {
 
 .btn:hover,
 .btn:focus-visible {
-  background: var(--color-gold);
-  color: var(--color-charcoal);
+  border-color: var(--color-gold-fill);
+  background: var(--color-gold-fill);
+  color: var(--color-on-gold);
   outline: none;
   transform: translateY(-1px);
 }
 
 .btn--solid {
-  background: var(--color-gold);
-  color: var(--color-charcoal);
+  border-color: var(--color-gold-fill);
+  background: var(--color-gold-fill);
+  color: var(--color-on-gold);
 }
 
 .btn--solid:hover,
@@ -344,7 +382,7 @@ p {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  background: var(--color-charcoal);
+  background: #0c0e12; /* the illustrated scenes are painted for a dark backdrop */
 }
 
 .scene__svg {

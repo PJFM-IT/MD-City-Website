@@ -5,7 +5,7 @@ import { media, prosperityGallery } from "../../data/site";
 const lead = { ...prosperityGallery[0], src: media.prosperity || prosperityGallery[0].src };
 ---
 
-<section class="prosperity band" id="hour-of-prosperity">
+<section class="prosperity band theme-dark" id="hour-of-prosperity">
   <div class="band__media" aria-hidden="true" data-gallery-item="prosperity-0">
     <div data-parallax="0.08">
       <Placeholder label={lead.alt} src={lead.src || undefined} scene={lead.scene} ratio="auto" />
