@@ -26,7 +26,7 @@ export const SUBTITLE_LANGS = [
 ];
 
 export const navLinks = [
-  { href: "#top", label: "Home" },
+  { href: "#watch", label: "Home" },
   { href: "#vision", label: "The Vision" },
   { href: "#explore", label: "Explore" },
   { href: "#zion-grounds", label: "Zion Grounds" },
@@ -37,7 +37,7 @@ export const navLinks = [
 ];
 
 export const footerLinks = [
-  { href: "#top", label: "Home" },
+  { href: "#watch", label: "Home" },
   { href: "#vision", label: "The Vision" },
   { href: "#zion-grounds", label: "Zion Grounds" },
   { href: "#carmel-hill", label: "Carmel Hill" },
