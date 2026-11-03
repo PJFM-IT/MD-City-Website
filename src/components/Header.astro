@@ -1,6 +1,6 @@
 ---
 import Brand from "./Brand.astro";
-import { navLinks as links } from "../data/site";
+import { navLinks as links, GIVING_URL } from "../data/site";
 ---
 
 <header class="site-header theme-dark" data-header>
@@ -19,6 +19,9 @@ import { navLinks as links } from "../data/site";
       </ul>
     </nav>
 
+    <div class="site-header__actions">
+      <a class="btn btn--solid giving-btn" href={GIVING_URL} target="_blank" rel="noopener">Giving</a>
+
     <button
       class="nav-toggle"
       type="button"
@@ -29,6 +32,7 @@ import { navLinks as links } from "../data/site";
       <span class="nav-toggle__bars" aria-hidden="true"></span>
       <span class="nav-toggle__text">Menu</span>
     </button>
+    </div>
   </div>
 </header>
 
@@ -56,6 +60,8 @@ import { navLinks as links } from "../data/site";
       }
     </ul>
   </nav>
+
+  <a class="btn btn--solid side-nav__giving" href={GIVING_URL} target="_blank" rel="noopener">Giving</a>
 
   <p class="side-nav__note">Or simply scroll the page</p>
 </aside>
@@ -89,6 +95,21 @@ import { navLinks as links } from "../data/site";
     height: 100%;
     width: var(--container-wide);
     margin-inline: auto;
+  }
+
+  .site-header__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .giving-btn {
+    min-height: 2.4rem;
+    padding-inline: 1.3rem;
+  }
+
+  .side-nav__giving {
+    margin-top: 1.75rem;
   }
 
   .top-nav__list {

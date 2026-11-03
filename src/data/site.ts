@@ -4,6 +4,27 @@ import type { SceneName } from "../scenes/types";
 /** YouTube embed URL, e.g. "https://www.youtube.com/embed/VIDEO_ID". Empty shows "coming soon". */
 export const VISION_FILM_URL = "";
 
+/** Where every "Giving" button goes. */
+export const GIVING_URL = "https://prophetjerome.com";
+
+/** Intro video that plays full screen when the site opens (file lives in /public/videos). Empty = no intro. */
+export const INTRO_VIDEO_URL = "/videos/intro.mp4";
+
+/**
+ * Subtitle languages for the intro video. Each needs /public/subtitles/intro.<code>.vtt.
+ * The video already has English captions burned in, so English isn't listed here.
+ */
+export const SUBTITLE_LANGS = [
+  { code: "si", name: "සිංහල (Sinhala)" },
+  { code: "ta", name: "தமிழ் (Tamil)" },
+  { code: "hi", name: "हिन्दी (Hindi)" },
+  { code: "zh", name: "中文 (Chinese)" },
+  { code: "es", name: "Español (Spanish)" },
+  { code: "fr", name: "Français (French)" },
+  { code: "de", name: "Deutsch (German)" },
+  { code: "pt", name: "Português (Portuguese)" },
+];
+
 export const navLinks = [
   { href: "#top", label: "Home" },
   { href: "#vision", label: "The Vision" },

@@ -499,11 +499,21 @@ const glitter = Array.from({ length: 30 }, () => ({
     });
   }
 
-  const safety = window.setTimeout(fallback, 12000);
-  startHero3D()
-    .catch((err) => {
-      console.warn("Hero 3D unavailable; showing the illustration.", err);
-      fallback();
-    })
-    .finally(() => window.clearTimeout(safety));
+  const boot = () => {
+    const safety = window.setTimeout(fallback, 12000);
+    startHero3D()
+      .catch((err) => {
+        console.warn("Hero 3D unavailable; showing the illustration.", err);
+        fallback();
+      })
+      .finally(() => window.clearTimeout(safety));
+  };
+
+  // While the intro video plays, don't build the 3D city: it fights the video for the GPU/CPU and
+  // makes playback stutter. Start it the moment the intro closes (it fades out over the city).
+  if (document.documentElement.classList.contains("intro-open")) {
+    window.addEventListener("intro:closed", boot, { once: true });
+  } else {
+    boot();
+  }
 </script>
