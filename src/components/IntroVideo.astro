@@ -111,6 +111,49 @@ const dust = Array.from({ length: 40 }, () => {
   )
 }
 
+{
+  INTRO_VIDEO_URL && (
+    <div class="intro-gate" data-intro-gate role="dialog" aria-modal="true" aria-label="Welcome to Miracle Dome City" hidden>
+      <img class="intro-gate__bg" src="/videos/intro-poster.jpg" alt="" aria-hidden="true" />
+      <div class="intro-gate__rays" aria-hidden="true"></div>
+      <div class="intro-gate__glow" aria-hidden="true"></div>
+
+      <div class="intro-gate__inner">
+        <img
+          class="intro-gate__logo"
+          src="/images/mdc-logo-light.webp"
+          alt="Miracle Dome City — Where Heaven Meets Earth"
+          width="640"
+          height="450"
+        />
+        <span class="intro-gate__rule" aria-hidden="true"></span>
+        <button class="intro-gate__enter" type="button" data-intro-enter>
+          <span>Enter Miracle Dome City</span>
+        </button>
+        <p class="intro-gate__note">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+            <path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" />
+            <path d="M16 8.5a4.5 4.5 0 0 1 0 7M18.5 6a8 8 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+          Best experienced with sound
+        </p>
+      </div>
+    </div>
+  )
+}
+
+<script is:inline>
+  // Show the welcome screen straight away (before the rest of the page paints), unless the visitor
+  // came in on a link to a later section.
+  (function () {
+    var g = document.querySelector("[data-intro-gate]");
+    var h = location.hash;
+    if (!g || (h && h !== "#watch" && h !== "#top")) return;
+    g.hidden = false;
+    document.documentElement.classList.add("intro-gated");
+  })();
+</script>
+
 <script is:inline>
   // Pick the file before the browser starts downloading: phones get the lighter 480p version.
   (function () {
@@ -749,6 +792,197 @@ const dust = Array.from({ length: 40 }, () => {
     }
   }
 
+  /* ---------- Welcome screen ---------- */
+  :global(html.intro-gated),
+  :global(html.intro-gated body) {
+    overflow: hidden;
+  }
+
+  .intro-gate {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: grid;
+    place-items: center;
+    padding: 1.5rem;
+    overflow: hidden;
+    background: #050403;
+    transition: opacity 1.1s var(--ease-out), visibility 0s linear 1.1s;
+  }
+
+  .intro-gate[hidden] {
+    display: none;
+  }
+
+  .intro-gate.is-leaving {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .intro-gate__bg {
+    position: absolute;
+    inset: -40px;
+    width: calc(100% + 80px);
+    height: calc(100% + 80px);
+    object-fit: cover;
+    filter: blur(18px) brightness(0.22) saturate(1.1);
+    transform: scale(1.08);
+    animation: gate-drift 24s ease-in-out infinite alternate;
+  }
+
+  @keyframes gate-drift {
+    to { transform: scale(1.18) translate(-1.5%, -1%); }
+  }
+
+  .intro-gate__rays {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 220vmax;
+    height: 220vmax;
+    background: repeating-conic-gradient(
+      from 0deg,
+      rgba(241, 212, 136, 0.07) 0deg 2.2deg,
+      transparent 2.2deg 9deg
+    );
+    -webkit-mask-image: radial-gradient(closest-side, #000 0%, rgba(0, 0, 0, 0.5) 20%, transparent 45%);
+    mask-image: radial-gradient(closest-side, #000 0%, rgba(0, 0, 0, 0.5) 20%, transparent 45%);
+    transform: translate(-50%, -50%);
+    animation: gate-rays 160s linear infinite;
+  }
+
+  @keyframes gate-rays {
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+
+  .intro-gate__glow {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 45% 40% at 50% 45%, rgba(241, 212, 136, 0.18), transparent 70%),
+      radial-gradient(ellipse 90% 90% at 50% 50%, transparent 50%, rgba(0, 0, 0, 0.75) 100%);
+  }
+
+  .intro-gate__inner {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(1.25rem, 3.5vh, 2rem);
+    text-align: center;
+  }
+
+  .intro-gate__inner > * {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 1.1s var(--ease-out), transform 1.1s var(--ease-out);
+  }
+
+  .intro-gate.is-in .intro-gate__inner > * {
+    opacity: 1;
+    transform: none;
+  }
+
+  .intro-gate.is-in .intro-gate__inner > :nth-child(2) { transition-delay: 0.35s; }
+  .intro-gate.is-in .intro-gate__inner > :nth-child(3) { transition-delay: 0.55s; }
+  .intro-gate.is-in .intro-gate__inner > :nth-child(4) { transition-delay: 0.8s; }
+
+  .intro-gate.is-leaving .intro-gate__inner > * {
+    transform: scale(1.04);
+  }
+
+  .intro-gate__logo {
+    width: clamp(11rem, 26vw, 19rem);
+    height: auto;
+    filter: drop-shadow(0 0 30px rgba(241, 212, 136, 0.25));
+  }
+
+  .intro-gate__rule {
+    width: clamp(5rem, 14vw, 9rem);
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold-hi, #f1d488), transparent);
+  }
+
+  .intro-gate__enter {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 3.4rem;
+    padding: 0 clamp(1.6rem, 4vw, 2.8rem);
+    border: 1px solid rgba(241, 212, 136, 0.75);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(241, 212, 136, 0.16), rgba(201, 164, 92, 0.06));
+    color: #fbe9b4;
+    font-family: var(--font-display);
+    font-size: clamp(0.78rem, 1.6vw, 0.98rem);
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    cursor: pointer;
+    overflow: hidden;
+    animation: gate-pulse 2.8s ease-in-out 1.6s infinite;
+    transition: background 0.35s var(--ease-out), color 0.35s var(--ease-out), border-color 0.35s var(--ease-out);
+  }
+
+  /* A soft sheen sweeping across the button. */
+  .intro-gate__enter::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 35%, rgba(255, 244, 210, 0.35) 50%, transparent 65%);
+    transform: translateX(-120%);
+    animation: gate-sheen 4.5s ease-in-out 2s infinite;
+  }
+
+  .intro-gate__enter span {
+    position: relative;
+  }
+
+  .intro-gate__enter:hover,
+  .intro-gate__enter:focus-visible {
+    background: linear-gradient(180deg, #f1d488, #c9a45c);
+    border-color: #f1d488;
+    color: #14110b;
+    outline: none;
+  }
+
+  @keyframes gate-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(241, 212, 136, 0.35), 0 0 30px rgba(241, 212, 136, 0.12); }
+    50% { box-shadow: 0 0 0 12px rgba(241, 212, 136, 0), 0 0 40px rgba(241, 212, 136, 0.2); }
+  }
+
+  @keyframes gate-sheen {
+    0% { transform: translateX(-120%); }
+    40%, 100% { transform: translateX(120%); }
+  }
+
+  .intro-gate__note {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    color: rgba(244, 241, 236, 0.6);
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 480px) {
+    .intro-gate__enter {
+      letter-spacing: 0.18em;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .intro-gate__bg,
+    .intro-gate__rays,
+    .intro-gate__enter,
+    .intro-gate__enter::before {
+      animation: none;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .intro__hint,
     .intro__heaven,
@@ -864,11 +1098,12 @@ const dust = Array.from({ length: 40 }, () => {
     let mostlyInView = true; // at least half of the film section on screen
     let onScreen = true; // any of it on screen
     let flipped = false; // showing the Giving side of the card
+    let gated = false; // the "Enter Miracle Dome City" welcome screen is up
 
     const apply = () => {
       video.muted = !(soundAllowed && mostlyInView);
       if (video.muted === false) video.volume = 1;
-      if (flipped) return;
+      if (flipped || gated) return;
       if (onScreen && video.paused) video.play().catch(() => {});
       else if (!onScreen && !video.paused) video.pause();
     };
@@ -1017,6 +1252,42 @@ const dust = Array.from({ length: 40 }, () => {
       langSelect.addEventListener("change", () => setLang(langSelect.value));
     }
 
-    startPlayback();
+    // ----- Welcome screen -----
+    // Browsers only allow sound after the visitor has pressed something, so the site opens on a
+    // welcome screen. Pressing "Enter Miracle Dome City" starts the film from the beginning with
+    // full sound. Visitors arriving on a link to a later section (e.g. /#contact) skip it.
+    const gate = document.querySelector<HTMLElement>("[data-intro-gate]");
+    const enter = gate?.querySelector<HTMLButtonElement>("[data-intro-enter]");
+    if (gate && enter && !gate.hidden) {
+      gated = true;
+      requestAnimationFrame(() => gate.classList.add("is-in"));
+      enter.focus({ preventScroll: true });
+
+      enter.addEventListener(
+        "click",
+        () => {
+          gated = false;
+          soundAllowed = true;
+          video.currentTime = 0;
+          video.muted = false;
+          video.volume = 1;
+          // Called directly inside the click, so the browser allows sound.
+          video.play().catch(() => {
+            soundAllowed = false;
+            video.muted = true;
+            video.play().catch(() => {});
+            armSoundOnFirstInteraction();
+          });
+          apply();
+          gate.classList.add("is-leaving");
+          document.documentElement.classList.remove("intro-gated");
+          window.setTimeout(() => gate.remove(), 1200);
+        },
+        { once: true },
+      );
+    } else {
+      gate?.remove();
+      startPlayback();
+    }
   }
 </script>
