@@ -108,6 +108,26 @@ import { navLinks as links, GIVING_URL } from "../data/site";
     padding-inline: 1.3rem;
   }
 
+  /* Phones: keep logo + Giving + Menu on one row. */
+  @media (max-width: 640px) {
+    .site-header__actions {
+      gap: 0.5rem;
+    }
+
+    .giving-btn {
+      min-height: 2.3rem;
+      padding-inline: 0.9rem;
+      font-size: 0.6rem;
+      letter-spacing: 0.14em;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .site-header :global(.brand__text) {
+      display: none;
+    }
+  }
+
   .side-nav__giving {
     margin-top: 1.75rem;
   }

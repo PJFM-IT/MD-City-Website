@@ -509,10 +509,21 @@ const glitter = Array.from({ length: 30 }, () => ({
       .finally(() => window.clearTimeout(safety));
   };
 
-  // While the intro video plays, don't build the 3D city: it fights the video for the GPU/CPU and
-  // makes playback stutter. Start it the moment the intro closes (it fades out over the city).
-  if (document.documentElement.classList.contains("intro-open")) {
-    window.addEventListener("intro:closed", boot, { once: true });
+  // While the film section above the hero is on screen, don't build the 3D city: it fights the
+  // video for the GPU/CPU and makes playback stutter. Start it as soon as the visitor scrolls on
+  // (or straight away if the page opens further down, e.g. from a #link).
+  const intro = document.querySelector<HTMLElement>("[data-intro]");
+  if (intro && "IntersectionObserver" in window) {
+    const watcher = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.intersectionRatio < 0.9) {
+          watcher.disconnect();
+          boot();
+        }
+      },
+      { threshold: [0, 0.9, 1] },
+    );
+    watcher.observe(intro);
   } else {
     boot();
   }

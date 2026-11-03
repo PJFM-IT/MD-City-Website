@@ -1,17 +1,53 @@
 ---
-import { INTRO_VIDEO_URL, GIVING_URL, SUBTITLE_LANGS } from "../data/site";
+import { INTRO_VIDEO_URL, SUBTITLE_LANGS } from "../data/site";
+
+// Gold dust rising around the film (deterministic so every build looks the same).
+let seed = 11;
+const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+const dust = Array.from({ length: 40 }, () => {
+  // Weighted towards the left/right edges, where the space beside the film is.
+  const r = rand();
+  const left = r < 0.42 ? rand() * 15 : r < 0.84 ? 85 + rand() * 15 : rand() * 100;
+  return `left:${left.toFixed(1)}%;--s:${(1.5 + rand() * 3.5).toFixed(1)}px;--x:${(rand() * 70 - 35).toFixed(0)}px;--t:${(10 + rand() * 10).toFixed(1)}s;--d:${(-rand() * 20).toFixed(1)}s`;
+});
 ---
 
 {
   INTRO_VIDEO_URL && (
-    <div
-      class="intro theme-dark"
-      data-intro
-      role="dialog"
-      aria-modal="true"
-      aria-label="Welcome to Miracle Dome City"
-    >
-      <div class="intro__stage">
+    <section class="intro theme-dark" id="watch" data-intro aria-label="Miracle Dome City film">
+      <!-- Atmosphere, back to front: the film's own colours, light rays, heaven glow, gold dust, vignette. -->
+      <canvas class="intro__ambient" data-intro-ambient width="160" height="90" aria-hidden="true"></canvas>
+      <div class="intro__rays" aria-hidden="true"></div>
+      <div class="intro__heaven" aria-hidden="true"></div>
+      <div class="intro__dust" aria-hidden="true">
+        {dust.map((style) => <span style={style} />)}
+      </div>
+      <div class="intro__vignette" aria-hidden="true"></div>
+
+      <div class="intro__stage" data-intro-stage>
+        <!-- Side panels (wide screens, when there is room beside the film). -->
+        <div class="intro__panel intro__panel--left" aria-hidden="true">
+          <span class="intro__ornament"></span>
+          <span class="intro__rule"></span>
+          <p class="intro__vtext">Miracle Dome City</p>
+          <span class="intro__rule"></span>
+          <span class="intro__ornament"></span>
+        </div>
+        <div class="intro__panel intro__panel--right" aria-hidden="true">
+          <span class="intro__ornament"></span>
+          <span class="intro__rule"></span>
+          <p class="intro__vtext">Where Heaven Meets Earth</p>
+          <span class="intro__rule"></span>
+          <span class="intro__ornament"></span>
+        </div>
+
+        <!-- Phones: a small title block above the film. -->
+        <div class="intro__mtitle" aria-hidden="true">
+          <span class="intro__ornament"></span>
+          <p class="intro__mtitle-name">Miracle Dome City</p>
+          <p class="intro__mtitle-tag">Where Heaven Meets Earth</p>
+        </div>
+
         <video
           class="intro__video"
           data-intro-video
@@ -19,6 +55,7 @@ import { INTRO_VIDEO_URL, GIVING_URL, SUBTITLE_LANGS } from "../data/site";
           data-src-mobile={INTRO_VIDEO_URL.replace(/\.mp4$/, "-mobile.mp4")}
           poster="/videos/intro-poster.jpg"
           playsinline
+          loop
           preload="auto"
         >
           {
@@ -27,21 +64,29 @@ import { INTRO_VIDEO_URL, GIVING_URL, SUBTITLE_LANGS } from "../data/site";
             ))
           }
         </video>
+
+        <!-- Gold frame: hairlines, glowing corners and diamond accents. -->
+        <div class="intro__frame" aria-hidden="true">
+          <span class="intro__corner intro__corner--tl"></span>
+          <span class="intro__corner intro__corner--tr"></span>
+          <span class="intro__corner intro__corner--bl"></span>
+          <span class="intro__corner intro__corner--br"></span>
+          <span class="intro__gem intro__gem--a"></span>
+          <span class="intro__gem intro__gem--b"></span>
+        </div>
+
         <!-- Translated subtitles sit just above the video's own (burned-in) English captions. -->
         <p class="intro__subs" data-intro-subs aria-live="polite" hidden></p>
-      </div>
 
-      <div class="intro__bar">
-        <button class="intro__chip intro__sound" type="button" data-intro-sound aria-pressed="false">
-          <svg class="intro__sound-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+        <button class="intro__hint" type="button" data-intro-hint hidden>
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
             <path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" />
-            <path class="intro__sound-waves" d="M16 8.5a4.5 4.5 0 0 1 0 7M18.5 6a8 8 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-            <path class="intro__sound-mute" d="M16.5 9.5l5 5M21.5 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            <path d="M16 8.5a4.5 4.5 0 0 1 0 7M18.5 6a8 8 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
           </svg>
-          <span data-intro-sound-label>Sound on</span>
+          Tap anywhere for sound
         </button>
 
-        <label class="intro__chip intro__lang">
+        <label class="intro__lang">
           <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
             <rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6" />
             <path d="M7 11h4M13 11h4M7 15h6M15 15h2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
@@ -52,83 +97,134 @@ import { INTRO_VIDEO_URL, GIVING_URL, SUBTITLE_LANGS } from "../data/site";
           </select>
         </label>
 
-        <span class="intro__spacer" />
-
-        <a class="intro__chip" href={GIVING_URL} target="_blank" rel="noopener">Giving</a>
-        <button class="intro__chip intro__chip--solid" type="button" data-intro-close>
-          Enter the site <span aria-hidden="true">&rarr;</span>
-        </button>
+        <div class="intro__progress" aria-hidden="true">
+          <span data-intro-progress />
+        </div>
       </div>
-
-      <div class="intro__progress" aria-hidden="true">
-        <span data-intro-progress />
-      </div>
-    </div>
+    </section>
   )
 }
 
 <script is:inline>
-  // Runs immediately so returning visitors (same browser session) never see the intro flash.
+  // Pick the file before the browser starts downloading: phones get the lighter 480p version.
   (function () {
-    var el = document.querySelector("[data-intro]");
-    if (!el) return;
-    var seen = false;
-    try {
-      seen = sessionStorage.getItem("mdc-intro-seen") === "1";
-    } catch (e) {}
-    if (seen) {
-      el.remove();
-    } else {
-      document.documentElement.classList.add("intro-open");
-      // Phones and small screens get the lighter 480p file (~3.7 MB); everything else the 720p (~6.9 MB).
-      var v = el.querySelector("[data-intro-video]");
-      if (v) {
-        var small = window.matchMedia("(max-width: 900px)").matches;
-        v.src = (small && v.dataset.srcMobile) || v.dataset.src;
-      }
-    }
+    var v = document.querySelector("[data-intro-video]");
+    if (!v) return;
+    var small = window.matchMedia("(max-width: 900px)").matches;
+    v.src = (small && v.dataset.srcMobile) || v.dataset.src;
   })();
 </script>
 
 <style>
-  :global(html.intro-open),
-  :global(html.intro-open body) {
+  /* First section of the page. The film fills the space below the header and is always shown whole
+     (never cropped). Around it, back to front: a blurred glow of the film's own colours, slowly
+     turning light rays, a gold "heaven light", rising gold dust and a vignette. On wide screens two
+     side panels carry the name, tagline and playback timecode. */
+  .intro {
+    --gold-hi: #f1d488;
+    --gold-line: rgba(201, 164, 92, 0.55);
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100svh;
+    min-height: 22rem;
+    padding-top: var(--header-h);
+    overflow: hidden;
+    background: #000;
+  }
+
+  /* ---------- Atmosphere ---------- */
+  .intro__ambient,
+  .intro__heaven,
+  .intro__dust,
+  .intro__vignette {
+    position: absolute;
+    inset: var(--header-h) 0 0;
+    pointer-events: none;
+  }
+
+  .intro__ambient {
+    width: 100%;
+    height: calc(100% - var(--header-h));
+    filter: brightness(0.5) saturate(1.1);
+    opacity: 0;
+    transition: opacity 1s var(--ease-out);
+  }
+
+  .intro__ambient.is-on {
+    opacity: 1;
+  }
+
+  /* Fine rays fanning out from behind the top of the film, turning very slowly. */
+  .intro__rays {
+    position: absolute;
+    top: var(--header-h);
+    left: 50%;
+    width: 220vmax;
+    height: 220vmax;
+    background: repeating-conic-gradient(
+      from 0deg,
+      rgba(241, 212, 136, 0.075) 0deg 2.2deg,
+      transparent 2.2deg 9deg
+    );
+    -webkit-mask-image: radial-gradient(closest-side, #000 0%, rgba(0, 0, 0, 0.55) 22%, transparent 48%);
+    mask-image: radial-gradient(closest-side, #000 0%, rgba(0, 0, 0, 0.55) 22%, transparent 48%);
+    transform: translate(-50%, -50%);
+    animation: intro-rays 180s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes intro-rays {
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+
+  .intro__heaven {
+    background:
+      radial-gradient(ellipse 50% 55% at 50% 0%, rgba(241, 212, 136, 0.26), transparent 70%),
+      radial-gradient(ellipse 40% 70% at 50% 110%, rgba(201, 164, 92, 0.1), transparent 70%);
+    animation: intro-breathe 8s ease-in-out infinite;
+  }
+
+  @keyframes intro-breathe {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  .intro__dust {
     overflow: hidden;
   }
 
-  /* The intro covers the screen: stop the browser painting/animating the page underneath so all
-     of its effort goes to smooth video playback. Shown again the moment the intro starts closing. */
-  :global(html.intro-open body > :not(.intro)) {
-    visibility: hidden;
-  }
-
-  :global(html.intro-open body > :not(.intro) *) {
-    animation-play-state: paused !important;
-  }
-
-  .intro {
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-    background: #000;
-    transition:
-      opacity 0.9s var(--ease-out),
-      visibility 0.9s;
-  }
-
-  .intro.is-leaving {
-    opacity: 0;
-    visibility: hidden;
-  }
-
-  /* The stage is always exactly 16:9 and fits inside the screen, so the whole frame (including the
-     video's own captions at the bottom) is always visible; black bars fill any spare space. */
-  .intro__stage {
+  .intro__dust span {
     position: absolute;
-    inset: 0;
-    margin: auto;
-    width: min(100vw, calc(100svh * 16 / 9));
-    max-height: 100svh;
+    bottom: -12px;
+    width: var(--s);
+    height: var(--s);
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff1c4 0%, rgba(241, 212, 136, 0.65) 40%, rgba(241, 212, 136, 0) 70%);
+    opacity: 0;
+    animation: intro-rise var(--t) linear var(--d) infinite;
+  }
+
+  @keyframes intro-rise {
+    0% { transform: translate3d(0, 0, 0); opacity: 0; }
+    12% { opacity: 0.9; }
+    80% { opacity: 0.5; }
+    100% { transform: translate3d(var(--x), -95svh, 0); opacity: 0; }
+  }
+
+  .intro__vignette {
+    background: radial-gradient(ellipse 75% 85% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.6) 100%);
+  }
+
+  /* ---------- The film ---------- */
+  /* Exactly 16:9 and as large as fits below the header, so subtitles, frame and controls line up
+     with the picture itself. */
+  .intro__stage {
+    position: relative;
+    z-index: 2;
+    width: min(100%, calc((100svh - var(--header-h)) * 16 / 9));
     aspect-ratio: 16 / 9;
   }
 
@@ -138,6 +234,9 @@ import { INTRO_VIDEO_URL, GIVING_URL, SUBTITLE_LANGS } from "../data/site";
     height: 100%;
     object-fit: contain;
     background: #000;
+    box-shadow:
+      0 0 0 1px rgba(201, 164, 92, 0.25),
+      0 30px 80px rgba(0, 0, 0, 0.6);
   }
 
   /* Subtitles are drawn by .intro__subs; hide the browser's own rendering if it shows any. */
@@ -146,87 +245,226 @@ import { INTRO_VIDEO_URL, GIVING_URL, SUBTITLE_LANGS } from "../data/site";
     background: transparent;
   }
 
+  /* ---------- Gold frame ---------- */
+  /* Hairlines run along the sides that have room around them; wherever the film touches the header
+     or the screen edge, the frame tucks just inside it. */
+  .intro__frame {
+    --fx: 10px; /* left/right offset (inside the film unless there's room beside it) */
+    --fy: 10px; /* top/bottom offset (inside the film unless there's room above/below) */
+    position: absolute;
+    inset: var(--fy) var(--fx);
+    border: 0 solid var(--gold-line);
+    pointer-events: none;
+    animation: intro-frame-in 1.8s var(--ease-out) 0.15s both;
+  }
+
+  .intro.room-x .intro__frame {
+    --fx: -14px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+  }
+
+  .intro.room-y .intro__frame {
+    --fy: -14px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+  }
+
+  @keyframes intro-frame-in {
+    from {
+      opacity: 0;
+      clip-path: inset(48% 48% 48% 48%);
+    }
+    to {
+      opacity: 1;
+      clip-path: inset(-20px -20px -20px -20px);
+    }
+  }
+
+  .intro__corner {
+    position: absolute;
+    width: clamp(16px, 1.8vw, 28px);
+    height: clamp(16px, 1.8vw, 28px);
+    border: 0 solid var(--gold-hi);
+    filter: drop-shadow(0 0 5px rgba(241, 212, 136, 0.75));
+  }
+
+  .intro__corner--tl { top: -1px; left: -1px; border-width: 1.5px 0 0 1.5px; }
+  .intro__corner--tr { top: -1px; right: -1px; border-width: 1.5px 1.5px 0 0; }
+  .intro__corner--bl { bottom: -1px; left: -1px; border-width: 0 0 1.5px 1.5px; }
+  .intro__corner--br { bottom: -1px; right: -1px; border-width: 0 1.5px 1.5px 0; }
+
+  /* Small diamonds in the middle of the two visible hairlines. */
+  .intro__gem {
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    border: 1px solid var(--gold-hi);
+    background: #0b0b0d;
+    box-shadow: 0 0 10px rgba(241, 212, 136, 0.6);
+    transform: translate(-50%, -50%) rotate(45deg);
+  }
+
+  .intro__gem { display: none; }
+  .intro.room-x .intro__gem { display: block; }
+  .intro.room-x .intro__gem--a { top: 50%; left: -0.5px; }
+  .intro.room-x .intro__gem--b { top: 50%; left: calc(100% + 0.5px); }
+  .intro.room-y:not(.room-x) .intro__gem { display: block; }
+  .intro.room-y:not(.room-x) .intro__gem--a { top: -0.5px; left: 50%; }
+  .intro.room-y:not(.room-x) .intro__gem--b { top: calc(100% + 0.5px); left: 50%; }
+
+  /* ---------- Side panels ---------- */
+  .intro__panel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: var(--side, 0px);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(1rem, 2.4vh, 1.6rem);
+    pointer-events: none;
+  }
+
+  .intro__panel--left { right: 100%; }
+  .intro__panel--right { left: 100%; }
+
+  .intro.has-sides .intro__panel {
+    display: flex;
+    animation: intro-panel-in 1.6s var(--ease-out) 0.5s both;
+  }
+
+  .intro.has-sides .intro__panel--right {
+    animation-delay: 0.7s;
+  }
+
+  @keyframes intro-panel-in {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .intro__vtext {
+    margin: 0;
+    writing-mode: vertical-rl;
+    white-space: nowrap;
+    font-family: var(--font-display);
+    font-size: clamp(0.72rem, 1.55vh, 0.98rem);
+    font-weight: 500;
+    letter-spacing: 0.5em;
+    text-transform: uppercase;
+    background: linear-gradient(180deg, #fbe9b4 0%, var(--gold-hi) 35%, #b8914c 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 12px rgba(241, 212, 136, 0.35));
+  }
+
+  /* The left inscription reads upwards, the right one downwards — like a book spine on each side. */
+  .intro__panel--left .intro__vtext {
+    transform: rotate(180deg);
+  }
+
+  .intro__rule {
+    width: 1px;
+    height: clamp(1.75rem, 6vh, 3.75rem);
+    background: linear-gradient(180deg, transparent, var(--gold-line), transparent);
+  }
+
+  .intro__ornament {
+    width: 7px;
+    height: 7px;
+    border: 1px solid var(--gold-hi);
+    box-shadow: 0 0 10px rgba(241, 212, 136, 0.6);
+    transform: rotate(45deg);
+  }
+
+  /* Short wide screens: keep the panels from overflowing. */
+  @media (max-height: 700px) {
+    .intro__panel--right .intro__rule,
+    .intro__panel--left .intro__rule {
+      display: none;
+    }
+  }
+
+  /* ---------- Phone title ---------- */
+  .intro__mtitle {
+    display: none;
+  }
+
+  /* ---------- Subtitles & controls ---------- */
   .intro__subs {
     position: absolute;
+    z-index: 3;
     left: 50%;
+    /* Just above the video's own captions (they sit in the bottom ~18% of the frame). */
     bottom: 17%;
     transform: translateX(-50%);
     width: max-content;
     max-width: 86%;
     margin: 0;
-    padding: 0.3em 0.75em;
+    padding: 0.3em 0.8em;
     border-radius: 0.35em;
     background: rgba(8, 10, 13, 0.78);
     color: #fff;
     font-family: var(--font-body), "Nirmala UI", "Noto Sans Sinhala", "Noto Sans Tamil", "Noto Sans Devanagari",
       "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
-    font-size: clamp(0.85rem, 2.1vw, 1.45rem);
+    font-size: clamp(0.8rem, 2vw, 1.4rem);
     font-weight: 500;
     line-height: 1.45;
     text-align: center;
-    white-space: pre-line;
     pointer-events: none;
   }
 
-  .intro__bar {
+  .intro__hint,
+  .intro__lang {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 2;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 1rem 1.25rem;
-    background: linear-gradient(180deg, rgba(8, 10, 13, 0.55), transparent);
-  }
-
-  .intro__spacer {
-    flex: 1;
-  }
-
-  .intro__chip {
+    z-index: 3;
+    top: 1rem;
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    min-height: 2.4rem;
+    gap: 0.55rem;
+    min-height: 2.3rem;
     padding: 0 1rem;
-    border: 1px solid rgba(201, 164, 92, 0.45);
+    border: 1px solid rgba(201, 164, 92, 0.5);
     border-radius: 999px;
-    background: rgba(12, 14, 18, 0.55);
-    backdrop-filter: blur(8px);
+    background: rgba(10, 11, 14, 0.62);
+    backdrop-filter: blur(10px);
     color: var(--color-white);
     font-family: var(--font-body);
-    font-size: 0.66rem;
-    font-weight: 500;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    white-space: nowrap;
     cursor: pointer;
-    transition:
-      border-color 0.25s var(--ease-out),
-      background 0.25s var(--ease-out),
-      color 0.25s var(--ease-out);
+    transition: border-color 0.25s var(--ease-out), background 0.25s var(--ease-out);
   }
 
-  .intro__chip:hover,
-  .intro__chip:focus-visible,
-  .intro__chip:focus-within {
-    border-color: var(--color-gold);
+  .intro__hint:hover,
+  .intro__hint:focus-visible,
+  .intro__lang:hover,
+  .intro__lang:focus-within {
+    border-color: var(--gold-hi);
+    background: rgba(10, 11, 14, 0.8);
     outline: none;
   }
 
-  .intro__chip--solid {
-    border-color: var(--color-gold-fill);
-    background: var(--color-gold-fill);
-    color: var(--color-on-gold);
+  /* Only shown when the browser blocked sound: any tap/click on the page turns it on. */
+  .intro__hint {
+    left: 1rem;
+    font-size: 0.66rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    animation: intro-pulse 2.6s ease-in-out 1s infinite;
   }
 
-  .intro__chip--solid:hover,
-  .intro__chip--solid:focus-visible {
-    background: var(--color-gold-bright);
-    border-color: var(--color-gold-bright);
+  .intro__hint[hidden] {
+    display: none;
+  }
+
+  @keyframes intro-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(241, 212, 136, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(241, 212, 136, 0); }
+  }
+
+  .intro__lang {
+    right: 1rem;
   }
 
   .intro__lang select {
@@ -244,7 +482,7 @@ import { INTRO_VIDEO_URL, GIVING_URL, SUBTITLE_LANGS } from "../data/site";
     background-repeat: no-repeat;
     color: inherit;
     font-family: var(--font-body), "Nirmala UI", "Microsoft YaHei", system-ui, sans-serif;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     letter-spacing: 0.04em;
     cursor: pointer;
     outline: none;
@@ -255,71 +493,103 @@ import { INTRO_VIDEO_URL, GIVING_URL, SUBTITLE_LANGS } from "../data/site";
     background: #f4f1ec;
   }
 
-  /* Muted (default): a gentle pulse invites people to turn the sound on. */
-  .intro__sound[aria-pressed="false"] {
-    animation: intro-pulse 2.4s ease-in-out 1.5s infinite;
-  }
-
-  .intro__sound[aria-pressed="false"] .intro__sound-waves,
-  .intro__sound[aria-pressed="true"] .intro__sound-mute {
-    display: none;
-  }
-
-  @keyframes intro-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(201, 164, 92, 0.45); }
-    50% { box-shadow: 0 0 0 8px rgba(201, 164, 92, 0); }
-  }
-
+  /* Thin progress line along the bottom of the film (smaller screens only; hidden beside the side
+     panels on wide screens). */
   .intro__progress {
     position: absolute;
+    z-index: 3;
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 2;
-    height: 3px;
-    background: rgba(255, 255, 255, 0.08);
+    height: 2px;
+    background: rgba(255, 255, 255, 0.1);
   }
 
   .intro__progress span {
     display: block;
     height: 100%;
     width: 100%;
-    background: var(--color-gold);
+    background: linear-gradient(90deg, #b8914c, var(--gold-hi));
     transform: scaleX(0);
     transform-origin: left;
   }
 
-  /* Phones: the controls wrap onto two rows above the video. */
-  @media (max-width: 640px) {
-    .intro__bar {
-      gap: 0.5rem;
-      padding: 0.75rem 1rem;
+  .intro.has-sides .intro__progress {
+    display: none;
+  }
+
+  /* ---------- Upright phones ---------- */
+  /* Full-width film in the middle of the screen: title block and sound note above, subtitle picker
+     below. */
+  @media (max-aspect-ratio: 1/1) {
+    .intro__mtitle {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: calc(100% + 4.75rem);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.55rem;
+      text-align: center;
+      pointer-events: none;
+      animation: intro-panel-in 1.4s var(--ease-out) 0.3s both;
     }
 
-    .intro__spacer {
-      flex-basis: 100%;
-      height: 0;
+    .intro__mtitle-name {
+      margin: 0.35rem 0 0;
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 500;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      background: linear-gradient(180deg, #fbe9b4, var(--gold-hi) 45%, #b8914c);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
     }
 
-    .intro__chip {
-      min-height: 2.2rem;
-      padding: 0 0.8rem;
-      font-size: 0.6rem;
+    .intro__mtitle-tag {
+      margin: 0;
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 1.05rem;
+      color: rgba(244, 241, 236, 0.75);
     }
 
     .intro__subs {
       bottom: 19%;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
+    }
+
+    .intro__hint {
+      top: auto;
+      bottom: calc(100% + 1.1rem);
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+
+    .intro__lang {
+      top: calc(100% + 1.1rem);
+      right: auto;
+      left: 50%;
+      transform: translateX(-50%);
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .intro__sound[aria-pressed="false"] {
+    .intro__hint,
+    .intro__heaven,
+    .intro__rays,
+    .intro__frame,
+    .intro.has-sides .intro__panel,
+    .intro__mtitle {
       animation: none;
     }
 
-    .intro {
-      transition: none;
+    .intro__dust {
+      display: none;
     }
   }
 </style>
@@ -330,86 +600,138 @@ import { INTRO_VIDEO_URL, GIVING_URL, SUBTITLE_LANGS } from "../data/site";
 
   if (intro && video) {
     const bar = intro.querySelector<HTMLElement>("[data-intro-progress]");
-    const soundBtn = intro.querySelector<HTMLButtonElement>("[data-intro-sound]");
-    const soundLabel = intro.querySelector<HTMLElement>("[data-intro-sound-label]");
-    let closed = false;
-
-    const close = () => {
-      if (closed) return;
-      closed = true;
-      try {
-        sessionStorage.setItem("mdc-intro-seen", "1");
-      } catch {}
-      intro.classList.add("is-leaving");
-      document.documentElement.classList.remove("intro-open");
-      video.pause();
-      window.dispatchEvent(new Event("intro:closed"));
-      setTimeout(() => {
-        video.removeAttribute("src");
-        video.load(); // stop any further downloading
-        intro.remove();
-      }, 1000);
-    };
-
-    intro.querySelectorAll("[data-intro-close]").forEach((btn) => btn.addEventListener("click", close));
-    window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") close();
-    });
-    video.addEventListener("ended", close);
-
+    const hint = intro.querySelector<HTMLButtonElement>("[data-intro-hint]");
+    const stage = intro.querySelector<HTMLElement>("[data-intro-stage]");
+    // ----- Progress line along the bottom of the film -----
     video.addEventListener("timeupdate", () => {
       if (bar && video.duration) bar.style.transform = `scaleX(${video.currentTime / video.duration})`;
     });
 
-    const syncSoundBtn = () => {
-      soundBtn?.setAttribute("aria-pressed", String(!video.muted));
-      if (soundLabel) soundLabel.textContent = video.muted ? "Sound on" : "Sound off";
+    // ----- Layout: side panels only when there is real room beside the film -----
+    // The frame's hairlines go wherever there is room around the film (room-x / room-y).
+    const checkSides = () => {
+      if (!stage) return;
+      const side = (intro.clientWidth - stage.clientWidth) / 2;
+      const top = parseFloat(getComputedStyle(intro).paddingTop) || 0;
+      const above = (intro.clientHeight - top - stage.clientHeight) / 2;
+      intro.style.setProperty("--side", `${Math.max(0, side)}px`);
+      intro.classList.toggle("has-sides", side >= 110);
+      intro.classList.toggle("room-x", side >= 24);
+      intro.classList.toggle("room-y", above >= 24);
     };
 
-    const unmute = () => {
-      video.muted = false;
-      video.volume = 1;
-      if (video.paused) video.play().catch(() => {});
-      syncSoundBtn();
+    // ----- Ambient glow -----
+    // A small canvas (160px wide) gets the current frame ~15 times a second, blurred; the browser
+    // scales it up to fill the section, which keeps it soft and very cheap to draw.
+    const ambient = intro.querySelector<HTMLCanvasElement>("[data-intro-ambient]");
+    const actx = ambient?.getContext("2d", { alpha: false });
+
+    const sizeAmbient = () => {
+      if (!ambient) return;
+      const r = ambient.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      ambient.width = 160;
+      ambient.height = Math.max(8, Math.round((160 * r.height) / r.width));
     };
 
-    soundBtn?.addEventListener("click", () => {
-      if (video.muted) unmute();
-      else {
-        video.muted = true;
-        syncSoundBtn();
-      }
+    const drawAmbient = () => {
+      if (!ambient || !actx || video.readyState < 2 || !video.videoWidth) return;
+      const cw = ambient.width;
+      const ch = ambient.height;
+      // "cover" crop of the video into the canvas.
+      const scale = Math.max(cw / video.videoWidth, ch / video.videoHeight);
+      const sw = cw / scale;
+      const sh = ch / scale;
+      const sx = (video.videoWidth - sw) / 2;
+      const sy = (video.videoHeight - sh) / 2;
+      actx.filter = "blur(4px)";
+      actx.drawImage(video, sx, sy, sw, sh, 0, 0, cw, ch);
+      actx.filter = "none";
+      ambient.classList.add("is-on");
+    };
+
+    sizeAmbient();
+    checkSides();
+    window.addEventListener("resize", () => {
+      sizeAmbient();
+      checkSides();
     });
+    video.addEventListener("loadeddata", drawAmbient);
+    video.addEventListener("seeked", drawAmbient);
+    // Checks the video's real state each tick instead of relying on play/pause events (a blocked
+    // attempt to play with sound can report "pause" after the muted fallback has already started).
+    window.setInterval(() => {
+      if (!video.paused && !document.hidden && intro.getBoundingClientRect().bottom > 0) drawAmbient();
+    }, 66);
 
-    // Sound on by default. Browsers block autoplay with sound until the visitor interacts with the
-    // page, so: try with sound first; if refused, play muted and switch the sound on at the very
-    // first click, tap or key press anywhere (the sound button handles its own click).
-    const armUnmuteOnFirstInteraction = () => {
+    // ----- Sound + scrolling -----
+    // The film loops continuously with sound while it's on screen. Scrolling down mutes it
+    // automatically; scrolling back up brings the sound back. Once it's completely off screen it
+    // also pauses (nobody can see it, and it keeps the rest of the site smooth), and carries on
+    // when the visitor comes back.
+    //
+    // Browsers block sound until the visitor has interacted with the page. If that happens, the
+    // film plays muted with a small "Tap anywhere for sound" note, and the sound switches on at
+    // the first click, tap or key press anywhere.
+    let soundAllowed = false; // has the browser let us play with sound yet?
+    let mostlyInView = true; // at least half of the film section on screen
+    let onScreen = true; // any of it on screen
+
+    const apply = () => {
+      video.muted = !(soundAllowed && mostlyInView);
+      if (video.muted === false) video.volume = 1;
+      if (hint) hint.hidden = soundAllowed || !mostlyInView;
+      if (onScreen && video.paused) video.play().catch(() => {});
+      else if (!onScreen && !video.paused) video.pause();
+    };
+
+    const allowSound = () => {
+      soundAllowed = true;
+      apply();
+    };
+
+    hint?.addEventListener("click", allowSound);
+
+    const armSoundOnFirstInteraction = () => {
       const events = ["pointerdown", "keydown", "touchend"] as const;
-      const onFirst = (event: Event) => {
+      const onFirst = () => {
         events.forEach((type) => document.removeEventListener(type, onFirst, true));
-        if (closed || !video.muted) return;
-        if (soundBtn && event.target instanceof Node && soundBtn.contains(event.target)) return;
-        unmute();
+        allowSound();
       };
       events.forEach((type) => document.addEventListener(type, onFirst, true));
     };
+
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(
+        ([entry]) => {
+          mostlyInView = entry.intersectionRatio >= 0.5;
+          onScreen = entry.isIntersecting;
+          apply();
+        },
+        { threshold: [0, 0.5, 1] },
+      ).observe(intro);
+    }
 
     const startPlayback = () => {
       video.muted = false;
       video
         .play()
-        .then(syncSoundBtn)
+        .then(() => {
+          soundAllowed = true;
+          apply();
+        })
         .catch(() => {
+          soundAllowed = false;
           video.muted = true;
-          syncSoundBtn();
           video.play().catch(() => {});
-          armUnmuteOnFirstInteraction();
+          apply();
+          armSoundOnFirstInteraction();
         });
     };
 
-    // Subtitles: the chosen language's track is loaded (mode "hidden") and its current cue is drawn
-    // in .intro__subs. Defaults to the visitor's browser language when we have it; remembers the choice.
+    // ----- Subtitles -----
+    // The chosen language's track is loaded (mode "hidden") and its current cue drawn in .intro__subs.
+    // Defaults to the visitor's browser language when available; remembers the choice.
     const langSelect = intro.querySelector<HTMLSelectElement>("[data-intro-lang]");
     const subs = intro.querySelector<HTMLElement>("[data-intro-subs]");
     const tracks = Array.from(video.textTracks);
@@ -428,7 +750,6 @@ import { INTRO_VIDEO_URL, GIVING_URL, SUBTITLE_LANGS } from "../data/site";
       if (subs) {
         subs.hidden = true;
         subs.lang = code;
-        subs.dir = code === "ar" ? "rtl" : "ltr";
       }
       const active = tracks.find((t) => t.language === code);
       if (active) renderCue(active);

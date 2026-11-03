@@ -1,36 +1,91 @@
 ---
-import Placeholder from "../Placeholder.astro";
-import { givingGallery } from "../../data/site";
+import { givingGallery, givingMoments } from "../../data/site";
 
 const [hero, ...collage] = givingGallery;
+
+// Phones get the 960px copy of each photo, larger screens the 1920px one.
+const srcset = (src: string) => `${src.replace(/\.webp$/, "-960.webp")} 960w, ${src} 1920w`;
+
+// Large photo on the left: a slow cross-fading slideshow of the day of giving.
+// Each slide drifts in its own direction while it's on screen (--kx / --ky / --ko).
+const slides = [
+  { src: hero.src, alt: hero.alt, kx: "-2%", ky: "-1.5%", ko: "60% 40%" },
+  { ...givingMoments[21], kx: "2%", ky: "-1%", ko: "40% 50%" }, // the queue outside
+  { ...givingMoments[19], kx: "-1.5%", ky: "1.5%", ko: "55% 60%" }, // partners lining up
+  { ...givingMoments[20], kx: "1.5%", ky: "-1.5%", ko: "50% 40%" }, // the full tent
+  { ...givingMoments[2], kx: "-2%", ky: "1%", ko: "65% 45%" }, // praying over a partner
+];
+
+// Photos the collage tiles rotate through: the four Dome photos shown first, then scenes from the
+// day of giving itself. (Every photo here needs a -960.webp copy alongside it.)
+const tilePool = [
+  ...collage.map((c) => c.src),
+  givingMoments[17].src, // partners lifting their hands
+  givingMoments[28].src, // the tent, full
+  givingMoments[14].src, // praying over the partners
+];
 ---
 
-<section class="historic band" id="historic-moments">
+<section class="historic band" id="historic-moments" data-hg>
   <div class="historic__lead theme-dark">
     <div class="band__media" aria-hidden="true" data-gallery-item="giving-0">
       <div data-parallax="0.05">
-        <Placeholder label={hero.alt} src={hero.src || undefined} scene={hero.scene} ratio="auto" class="historic__hero-ph" />
+        <div class="historic__slides">
+          {
+            slides.map((s, i) => (
+              <img
+                class:list={["historic__slide", { "is-active": i === 0 }]}
+                src={s.src}
+                srcset={srcset(s.src)}
+                sizes="(max-width: 900px) 100vw, 63vw"
+                alt=""
+                loading="lazy"
+                decoding="async"
+                style={`--kx:${s.kx};--ky:${s.ky};--ko:${s.ko}`}
+                data-hg-slide
+              />
+            ))
+          }
+        </div>
       </div>
     </div>
+
     <div class="historic__copy reveal">
-      <p class="eyebrow">A Historic Day of Giving</p>
-      <h2 class="display">A people stood behind the vision.</h2>
-      <p class="historic__text">
+      <p class="eyebrow historic__line">A Historic Day of Giving</p>
+      <h2 class="display historic__title" aria-label="A people stood behind the vision.">
+        {
+          "A people stood behind the vision.".split(" ").map((w, i) => (
+            <>
+              {i > 0 && " "}
+              <span class="historic__word" aria-hidden="true">
+                <span style={`--w:${i}`}>{w}</span>
+              </span>
+            </>
+          ))
+        }
+      </h2>
+      <p class="historic__text historic__line">
         Scores and scores of people lined up, one after another, to give
         towards the vision of Miracle Dome City. It became a visible expression
         of faith, unity and a generation standing together for what God is
         building for the nations.
       </p>
-      <button class="btn" type="button" data-lightbox="givingMoments" data-index="0">
+      <button class="btn historic__line" type="button" data-lightbox="givingMoments" data-index="0">
         View gallery <span aria-hidden="true">→</span>
       </button>
     </div>
+
+    <!-- Slide counter and timing line. -->
+    <div class="historic__meta" aria-hidden="true">
+      <span class="historic__count"><b data-hg-index>01</b> / {String(slides.length).padStart(2, "0")}</span>
+      <span class="historic__timer"><span data-hg-timer></span></span>
+    </div>
   </div>
 
-  <ul class="historic__collage reveal" aria-label="Day of giving photos">
+  <ul class="historic__collage" aria-label="Day of giving photos" data-hg-collage data-pool={JSON.stringify(tilePool)}>
     {
       collage.map((item, i) => (
-        <li data-gallery-item={`giving-${i + 1}`}>
+        <li data-gallery-item={`giving-${i + 1}`} style={`--t:${i}`}>
           <button
             class="historic__shot"
             type="button"
@@ -38,7 +93,10 @@ const [hero, ...collage] = givingGallery;
             data-index="0"
             aria-label={`Open the day of giving gallery: ${item.alt}`}
           >
-            <Placeholder label={item.alt} src={item.src || undefined} scene={item.scene} seed={i + 3} ratio="auto" />
+            <span class="historic__drift" style={`--d:${(-i * 3.5).toFixed(1)}s`}>
+              <img class="historic__tile is-front" src={item.src} srcset={srcset(item.src)} sizes="(max-width: 900px) 72vw, 19vw" alt={item.alt} loading="lazy" decoding="async" data-hg-tile />
+              <img class="historic__tile" alt="" loading="lazy" decoding="async" data-hg-tile />
+            </span>
             <span class="historic__zoom" aria-hidden="true">+</span>
           </button>
         </li>
@@ -55,6 +113,7 @@ const [hero, ...collage] = givingGallery;
     background: var(--color-charcoal);
   }
 
+  /* ---------- Large photo: cross-fading, slowly drifting slideshow ---------- */
   .historic__lead {
     position: relative;
     display: flex;
@@ -70,6 +129,81 @@ const [hero, ...collage] = givingGallery;
     background: linear-gradient(90deg, rgba(12, 14, 18, 0.88) 0%, rgba(12, 14, 18, 0.55) 38%, transparent 72%);
   }
 
+  .historic__slides {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: #0c0e12;
+  }
+
+  .historic__slide {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transform: scale(1.02);
+    transform-origin: var(--ko);
+    /* When a slide leaves it fades out first; its zoom resets only once it's invisible. */
+    transition:
+      opacity 1.6s ease,
+      transform 0s linear 1.7s;
+  }
+
+  .historic__slide.is-active {
+    opacity: 1;
+    transform: scale(1.14) translate(var(--kx), var(--ky));
+    transition:
+      opacity 1.6s ease,
+      transform 9s linear;
+  }
+
+  /* Slide counter + timing line, bottom-left. */
+  .historic__meta {
+    position: absolute;
+    z-index: 1;
+    left: clamp(1.25rem, 4vw, 4rem);
+    bottom: 1.6rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: rgba(244, 241, 236, 0.6);
+    font-size: 0.68rem;
+    letter-spacing: 0.2em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .historic__count b {
+    color: var(--color-gold-bright);
+    font-weight: 500;
+  }
+
+  .historic__timer {
+    position: relative;
+    width: 6rem;
+    height: 1px;
+    background: rgba(244, 241, 236, 0.22);
+    overflow: hidden;
+  }
+
+  .historic__timer span {
+    position: absolute;
+    inset: 0;
+    background: var(--color-gold-bright);
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+
+  .historic__timer span.is-running {
+    animation: hg-timer var(--hg-interval, 7s) linear forwards;
+  }
+
+  @keyframes hg-timer {
+    to { transform: scaleX(1); }
+  }
+
+  /* ---------- Copy: lines and words rise in when the section scrolls into view ---------- */
   .historic__copy {
     position: relative;
     z-index: 1;
@@ -77,9 +211,48 @@ const [hero, ...collage] = givingGallery;
     padding: var(--band-pad) clamp(1.25rem, 4vw, 4rem);
   }
 
+  /* The block itself stays put; its parts animate instead. */
+  .historic__copy.reveal {
+    opacity: 1;
+    transform: none;
+  }
+
   .historic__copy .display {
     max-width: 17ch;
     font-size: clamp(1.8rem, 3.4vw, 2.7rem);
+  }
+
+  .historic__word {
+    display: inline-block;
+    overflow: hidden;
+    padding-bottom: 0.08em;
+    margin-bottom: -0.08em;
+    vertical-align: top;
+  }
+
+  .historic__word > span {
+    display: inline-block;
+    transform: translateY(105%);
+    transition: transform 1s var(--ease-out);
+    transition-delay: calc(0.25s + var(--w) * 0.07s);
+  }
+
+  .historic__line {
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+      opacity 0.9s var(--ease-out),
+      transform 0.9s var(--ease-out);
+  }
+
+  .historic__copy .eyebrow.historic__line { transition-delay: 0.1s; }
+  .historic__text.historic__line { transition-delay: 0.75s; }
+  .historic__copy .btn.historic__line { transition-delay: 0.95s; }
+
+  .historic__copy.is-visible .historic__word > span,
+  .historic__copy.is-visible .historic__line {
+    opacity: 1;
+    transform: none;
   }
 
   .historic__text {
@@ -92,6 +265,7 @@ const [hero, ...collage] = givingGallery;
 
   .historic__copy .btn { margin-top: 1.5rem; }
 
+  /* ---------- Collage: tiles wipe in, drift, and swap photos now and then ---------- */
   .historic__collage {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -103,6 +277,16 @@ const [hero, ...collage] = givingGallery;
     background: var(--color-charcoal);
   }
 
+  .historic__collage li {
+    clip-path: inset(0 0 100% 0);
+    transition: clip-path 1.2s var(--ease-out);
+    transition-delay: calc(0.2s + var(--t) * 0.14s);
+  }
+
+  .historic.is-in .historic__collage li {
+    clip-path: inset(0 0 0 0);
+  }
+
   .historic__shot {
     position: relative;
     display: block;
@@ -111,15 +295,40 @@ const [hero, ...collage] = givingGallery;
     padding: 0;
     border: 0;
     overflow: hidden;
-    background: none;
+    background: #0c0e12;
     cursor: zoom-in;
   }
 
-  .historic__shot :global(.ph) {
+  .historic__drift {
+    position: absolute;
+    inset: 0;
+    animation: hg-drift 16s ease-in-out var(--d) infinite alternate;
+    animation-play-state: paused;
+  }
+
+  .historic.is-live .historic__drift {
+    animation-play-state: running;
+  }
+
+  @keyframes hg-drift {
+    from { transform: scale(1.04) translate(-1%, 0); }
+    to { transform: scale(1.12) translate(1%, -1.5%); }
+  }
+
+  .historic__tile {
+    position: absolute;
+    inset: 0;
+    width: 100%;
     height: 100%;
-    min-height: 100%;
-    aspect-ratio: auto;
-    transition: transform 1s var(--ease-out);
+    object-fit: cover;
+    opacity: 0;
+    transition:
+      opacity 1.4s ease,
+      transform 1s var(--ease-out);
+  }
+
+  .historic__tile.is-front {
+    opacity: 1;
   }
 
   .historic__zoom {
@@ -138,8 +347,8 @@ const [hero, ...collage] = givingGallery;
     transition: opacity 0.3s var(--ease-out);
   }
 
-  .historic__shot:hover :global(.ph),
-  .historic__shot:focus-visible :global(.ph) {
+  .historic__shot:hover .historic__tile,
+  .historic__shot:focus-visible .historic__tile {
     transform: scale(1.07);
   }
 
@@ -156,6 +365,14 @@ const [hero, ...collage] = givingGallery;
   @media (max-width: 900px) {
     .historic { grid-template-columns: 1fr; }
     .historic__lead { min-height: 440px; }
+
+    /* Text runs the full width here, so shade the whole photo (more at top and bottom). */
+    .historic__lead .band__media::after {
+      background: linear-gradient(180deg, rgba(12, 14, 18, 0.78) 0%, rgba(12, 14, 18, 0.55) 55%, rgba(12, 14, 18, 0.85) 100%);
+    }
+
+    .historic__copy { padding-bottom: 4.5rem; }
+    .historic__meta { bottom: 1.4rem; }
 
     /* Horizontal swipe strip on mobile */
     .historic__collage {
@@ -179,6 +396,141 @@ const [hero, ...collage] = givingGallery;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .historic__shot :global(.ph) { transition: none; }
+    .historic__slide,
+    .historic__slide.is-active {
+      transform: none;
+      transition: opacity 0.6s ease;
+    }
+
+    .historic__drift { animation: none; }
+    .historic__tile { transition: opacity 0.6s ease; }
+    .historic__collage li { clip-path: none; transition: none; }
+
+    .historic__word > span,
+    .historic__line {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+
+    .historic__meta { display: none; }
   }
 </style>
+
+<script>
+  const section = document.querySelector<HTMLElement>("[data-hg]");
+
+  if (section) {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const SLIDE_MS = 7000;
+    const SWAP_MS = 3800;
+
+    // ----- Slideshow -----
+    const slides = Array.from(section.querySelectorAll<HTMLImageElement>("[data-hg-slide]"));
+    const indexEl = section.querySelector<HTMLElement>("[data-hg-index]");
+    const timer = section.querySelector<HTMLElement>("[data-hg-timer]");
+    section.style.setProperty("--hg-interval", `${SLIDE_MS}ms`);
+    let current = 0;
+
+    const restartTimer = () => {
+      if (!timer) return;
+      timer.classList.remove("is-running");
+      void timer.offsetWidth; // restart the CSS animation
+      timer.classList.add("is-running");
+    };
+
+    const showSlide = (next: number) => {
+      const img = slides[next];
+      const go = () => {
+        slides[current].classList.remove("is-active");
+        img.classList.add("is-active");
+        current = next;
+        if (indexEl) indexEl.textContent = String(next + 1).padStart(2, "0");
+        restartTimer();
+      };
+      // Wait for the next photo so it never fades in half-loaded.
+      if (img.complete && img.naturalWidth) go();
+      else {
+        img.loading = "eager";
+        img.addEventListener("load", go, { once: true });
+      }
+    };
+
+    // ----- Collage swaps -----
+    const collage = section.querySelector<HTMLElement>("[data-hg-collage]");
+    const pool: string[] = collage?.dataset.pool ? JSON.parse(collage.dataset.pool) : [];
+    const tiles = Array.from(section.querySelectorAll<HTMLElement>(".historic__drift"));
+    const shown = tiles.map((_, i) => pool[i]);
+    const order = [0, 3, 1, 2]; // diagonal-ish, so neighbours don't change back to back
+    let swapStep = 0;
+
+    const swapTile = () => {
+      const t = order[swapStep % order.length];
+      swapStep++;
+      const tile = tiles[t];
+      if (!tile) return;
+      const unused = pool.filter((src) => !shown.includes(src));
+      if (!unused.length) return;
+      const src = unused[Math.floor(Math.random() * unused.length)];
+      const [a, b] = Array.from(tile.querySelectorAll<HTMLImageElement>("[data-hg-tile]"));
+      const front = a.classList.contains("is-front") ? a : b;
+      const back = front === a ? b : a;
+      shown[t] = src; // reserve it now so two tiles never pick the same photo
+      back.loading = "eager";
+      back.srcset = `${src.replace(/\.webp$/, "-960.webp")} 960w, ${src} 1920w`;
+      back.sizes = "(max-width: 900px) 72vw, 19vw";
+      back.src = src;
+      // Cross-fade once the new photo is decoded, so it never appears half-drawn.
+      back
+        .decode()
+        .catch(() => {})
+        .then(() => {
+          back.alt = front.alt;
+          front.alt = "";
+          back.classList.add("is-front");
+          front.classList.remove("is-front");
+        });
+    };
+
+    // ----- Run only while the section is on screen -----
+    let slideTimer = 0;
+    let swapTimer = 0;
+
+    const start = () => {
+      section.classList.add("is-in", "is-live");
+      if (reduced || slideTimer) return;
+      restartTimer();
+      slideTimer = window.setInterval(() => showSlide((current + 1) % slides.length), SLIDE_MS);
+      swapTimer = window.setInterval(swapTile, SWAP_MS);
+    };
+
+    const stop = () => {
+      section.classList.remove("is-live");
+      window.clearInterval(slideTimer);
+      window.clearInterval(swapTimer);
+      slideTimer = swapTimer = 0;
+      timer?.classList.remove("is-running");
+    };
+
+    let inView = false;
+
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(
+        ([entry]) => {
+          inView = entry.isIntersecting;
+          if (inView && !document.hidden) start();
+          else stop();
+        },
+        { threshold: 0.2 },
+      ).observe(section);
+    } else {
+      section.classList.add("is-in");
+    }
+
+    // Pause in a background tab; carry on when the visitor comes back.
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) stop();
+      else if (inView) start();
+    });
+  }
+</script>
