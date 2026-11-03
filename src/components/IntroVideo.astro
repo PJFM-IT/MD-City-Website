@@ -1,5 +1,5 @@
 ---
-import { INTRO_VIDEO_URL, SUBTITLE_LANGS } from "../data/site";
+import { INTRO_VIDEO_URL, SUBTITLE_LANGS, GIVING_URL } from "../data/site";
 
 // Gold dust rising around the film (deterministic so every build looks the same).
 let seed = 11;
@@ -48,22 +48,36 @@ const dust = Array.from({ length: 40 }, () => {
           <p class="intro__mtitle-tag">Where Heaven Meets Earth</p>
         </div>
 
-        <video
-          class="intro__video"
-          data-intro-video
-          data-src={INTRO_VIDEO_URL}
-          data-src-mobile={INTRO_VIDEO_URL.replace(/\.mp4$/, "-mobile.mp4")}
-          poster="/videos/intro-poster.jpg"
-          playsinline
-          loop
-          preload="auto"
-        >
-          {
-            SUBTITLE_LANGS.map((l) => (
-              <track kind="subtitles" srclang={l.code} label={l.name} src={`/subtitles/intro.${l.code}.vtt`} />
-            ))
-          }
-        </video>
+        <!-- Two-sided card: the film on the front; when it ends the card turns over to the Giving
+             invitation on the back, then turns back and the film plays again. -->
+        <div class="intro__flip" data-intro-flip>
+          <video
+            class="intro__video"
+            data-intro-video
+            data-src={INTRO_VIDEO_URL}
+            data-src-mobile={INTRO_VIDEO_URL.replace(/\.mp4$/, "-mobile.mp4")}
+            poster="/videos/intro-poster.jpg"
+            playsinline
+            preload="auto"
+          >
+            {
+              SUBTITLE_LANGS.map((l) => (
+                <track kind="subtitles" srclang={l.code} label={l.name} src={`/subtitles/intro.${l.code}.vtt`} />
+              ))
+            }
+          </video>
+
+          <div class="intro__back" data-intro-back aria-hidden="true">
+            <div class="intro__back-inner">
+              <span class="intro__ornament"></span>
+              <h2 class="intro__back-title">Be a Part of the Miracle</h2>
+              <a class="btn btn--solid intro__back-btn" href={GIVING_URL} target="_blank" rel="noopener" tabindex="-1">
+                Giving
+              </a>
+            </div>
+            <span class="intro__back-timer" aria-hidden="true"><span data-intro-timer></span></span>
+          </div>
+        </div>
 
         <!-- Gold frame: hairlines, glowing corners and diamond accents. -->
         <div class="intro__frame" aria-hidden="true">
@@ -77,14 +91,6 @@ const dust = Array.from({ length: 40 }, () => {
 
         <!-- Translated subtitles sit just above the video's own (burned-in) English captions. -->
         <p class="intro__subs" data-intro-subs aria-live="polite" hidden></p>
-
-        <button class="intro__hint" type="button" data-intro-hint hidden>
-          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-            <path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" />
-            <path d="M16 8.5a4.5 4.5 0 0 1 0 7M18.5 6a8 8 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-          </svg>
-          Tap anywhere for sound
-        </button>
 
         <label class="intro__lang">
           <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
@@ -226,6 +232,171 @@ const dust = Array.from({ length: 40 }, () => {
     z-index: 2;
     width: min(100%, calc((100svh - var(--header-h)) * 16 / 9));
     aspect-ratio: 16 / 9;
+  }
+
+  .intro__stage {
+    perspective: 2200px;
+  }
+
+  /* ---------- The turning card ---------- */
+  .intro__flip {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 1.3s cubic-bezier(0.65, 0, 0.25, 1);
+  }
+
+  .intro.is-flipped .intro__flip {
+    transform: rotateY(180deg);
+  }
+
+  .intro.is-flipped .intro__back {
+    pointer-events: auto;
+  }
+
+  .intro__video,
+  .intro__back {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+
+  .intro__back {
+    position: absolute;
+    inset: 0;
+    container-type: inline-size;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    transform: rotateY(180deg);
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 70% 60% at 50% 0%, rgba(241, 212, 136, 0.22), transparent 70%),
+      linear-gradient(180deg, rgba(8, 9, 12, 0.8), rgba(8, 9, 12, 0.95)),
+      url("/videos/intro-poster.jpg") center / cover no-repeat,
+      #0a0907;
+    box-shadow:
+      0 0 0 1px rgba(201, 164, 92, 0.35),
+      0 30px 80px rgba(0, 0, 0, 0.6);
+    text-align: center;
+  }
+
+  .intro__back-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(0.4rem, 1.6cqw, 1.1rem);
+    max-width: min(46rem, 84%);
+  }
+
+  /* Content rises in once the card has turned. */
+  .intro__back-inner > * {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out);
+  }
+
+  .intro.is-flipped .intro__back-inner > * {
+    opacity: 1;
+    transform: none;
+  }
+
+  .intro.is-flipped .intro__back-inner > :nth-child(1) { transition-delay: 0.9s; }
+  .intro.is-flipped .intro__back-inner > :nth-child(2) { transition-delay: 1s; }
+  .intro.is-flipped .intro__back-inner > :nth-child(3) { transition-delay: 1.15s; }
+  .intro.is-flipped .intro__back-inner > :nth-child(4) { transition-delay: 1.3s; }
+  .intro.is-flipped .intro__back-inner > :nth-child(5) { transition-delay: 1.45s; }
+
+  .intro__back-inner > .intro__ornament {
+    transform: translateY(14px) rotate(45deg);
+  }
+
+  .intro.is-flipped .intro__back-inner > .intro__ornament {
+    transform: rotate(45deg);
+  }
+
+  .intro__back-eyebrow {
+    margin: 0;
+    color: var(--gold-hi);
+    font-size: clamp(0.55rem, 1.35cqw, 0.8rem);
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+  }
+
+  .intro__back-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.05rem, 4.6cqw, 3.2rem);
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: 0.04em;
+    background: linear-gradient(180deg, #fbe9b4 0%, var(--gold-hi) 45%, #b8914c 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 18px rgba(241, 212, 136, 0.25));
+  }
+
+  .intro__back-text {
+    margin: 0;
+    max-width: 36rem;
+    color: rgba(244, 241, 236, 0.82);
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: clamp(0.85rem, 2.1cqw, 1.35rem);
+    line-height: 1.5;
+  }
+
+  .intro__back-btn {
+    margin-top: clamp(0.2rem, 1cqw, 0.75rem);
+    min-width: clamp(8rem, 18cqw, 12rem);
+    animation: intro-pulse 2.6s ease-in-out infinite;
+  }
+
+  /* Small screens: keep it to the heading and the button. */
+  @container (max-width: 520px) {
+    .intro__back-text {
+      display: none;
+    }
+  }
+
+  /* Gold line along the bottom: time left before the film plays again. */
+  .intro__back-timer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .intro__back-timer span {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, #b8914c, var(--gold-hi));
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+
+  .intro.is-flipped .intro__back-timer span {
+    transform: scaleX(1);
+    transition: transform var(--back-ms, 10000ms) linear 1.3s;
+  }
+
+  /* Subtitles, sound note and progress belong to the film side. */
+  .intro.is-flipped .intro__subs,
+  .intro.is-flipped .intro__hint,
+  .intro.is-flipped .intro__progress {
+    visibility: hidden;
+  }
+
+  .intro__lang {
+    transition: opacity 0.5s var(--ease-out), border-color 0.25s var(--ease-out), background 0.25s var(--ease-out);
+  }
+
+  .intro.is-flipped .intro__lang {
+    opacity: 0;
+    pointer-events: none;
   }
 
   .intro__video {
@@ -584,8 +755,25 @@ const dust = Array.from({ length: 40 }, () => {
     .intro__rays,
     .intro__frame,
     .intro.has-sides .intro__panel,
-    .intro__mtitle {
+    .intro__mtitle,
+    .intro__back-btn {
       animation: none;
+    }
+
+    /* Cross-fade instead of turning. */
+    .intro__flip,
+    .intro.is-flipped .intro__flip {
+      transform: none;
+    }
+
+    .intro__back {
+      transform: none;
+      opacity: 0;
+      transition: opacity 0.6s;
+    }
+
+    .intro.is-flipped .intro__back {
+      opacity: 1;
     }
 
     .intro__dust {
@@ -600,7 +788,6 @@ const dust = Array.from({ length: 40 }, () => {
 
   if (intro && video) {
     const bar = intro.querySelector<HTMLElement>("[data-intro-progress]");
-    const hint = intro.querySelector<HTMLButtonElement>("[data-intro-hint]");
     const stage = intro.querySelector<HTMLElement>("[data-intro-stage]");
     // ----- Progress line along the bottom of the film -----
     video.addEventListener("timeupdate", () => {
@@ -676,11 +863,12 @@ const dust = Array.from({ length: 40 }, () => {
     let soundAllowed = false; // has the browser let us play with sound yet?
     let mostlyInView = true; // at least half of the film section on screen
     let onScreen = true; // any of it on screen
+    let flipped = false; // showing the Giving side of the card
 
     const apply = () => {
       video.muted = !(soundAllowed && mostlyInView);
       if (video.muted === false) video.volume = 1;
-      if (hint) hint.hidden = soundAllowed || !mostlyInView;
+      if (flipped) return;
       if (onScreen && video.paused) video.play().catch(() => {});
       else if (!onScreen && !video.paused) video.pause();
     };
@@ -690,7 +878,6 @@ const dust = Array.from({ length: 40 }, () => {
       apply();
     };
 
-    hint?.addEventListener("click", allowSound);
 
     const armSoundOnFirstInteraction = () => {
       const events = ["pointerdown", "keydown", "touchend"] as const;
@@ -710,6 +897,59 @@ const dust = Array.from({ length: 40 }, () => {
         },
         { threshold: [0, 0.5, 1] },
       ).observe(intro);
+    }
+
+    // ----- End of the film: turn the card over to the Giving invitation, then back again -----
+    const back = intro.querySelector<HTMLElement>("[data-intro-back]");
+    const backBtn = back?.querySelector<HTMLAnchorElement>("a");
+    const FLIP_MS = 1300; // matches the CSS turn
+    const BACK_MS = 10000; // how long the Giving side stays
+    let backTimer = 0;
+    let backLeft = BACK_MS;
+    let backStarted = 0;
+    intro.style.setProperty("--back-ms", `${BACK_MS}ms`);
+
+    const flipToFilm = () => {
+      window.clearTimeout(backTimer);
+      intro.classList.remove("is-flipped");
+      back?.setAttribute("aria-hidden", "true");
+      backBtn?.setAttribute("tabindex", "-1");
+      video.currentTime = 0;
+      if (bar) bar.style.transform = "scaleX(0)";
+      // Start the film again as the card comes round.
+      window.setTimeout(() => {
+        flipped = false;
+        apply();
+      }, FLIP_MS * 0.5);
+    };
+
+    // The countdown only runs while the visitor can actually see the card.
+    const runBackTimer = () => {
+      window.clearTimeout(backTimer);
+      backStarted = Date.now();
+      backTimer = window.setTimeout(flipToFilm, backLeft);
+    };
+
+    const flipToGiving = () => {
+      flipped = true;
+      backLeft = BACK_MS + FLIP_MS;
+      intro.classList.add("is-flipped");
+      back?.setAttribute("aria-hidden", "false");
+      backBtn?.removeAttribute("tabindex");
+      if (onScreen) runBackTimer();
+    };
+
+    video.addEventListener("ended", flipToGiving);
+
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(([entry]) => {
+        if (!flipped) return;
+        if (entry.isIntersecting) runBackTimer();
+        else {
+          window.clearTimeout(backTimer);
+          backLeft = Math.max(1500, backLeft - (Date.now() - backStarted));
+        }
+      }).observe(intro);
     }
 
     const startPlayback = () => {
