@@ -5,7 +5,7 @@ Cinematic one-page site for **Miracle Dome City** (`miracle-domecity.com`).
 ## Stack
 
 - **Astro** (static, SEO-friendly)
-- Contact inquiries via **Formspree email** (no database)
+- Contact section links straight to email and phone (no form, no database)
 
 ## Getting started
 
@@ -14,11 +14,11 @@ npm install
 npm run dev
 ```
 
-## Contact form (email)
+## Contact
 
-1. Create a form at [Formspree](https://formspree.io)
-2. Copy `.env.example` to `.env`
-3. Set `PUBLIC_FORMSPREE_ID` to your form ID
+The Contact section shows the email (opens the visitor's email app) and the phone
+number (tap to call on phones). The email can be changed with `PUBLIC_INQUIRY_EMAIL`
+(see `.env.example`).
 
 ## Scripts
 

@@ -1,18 +1,8 @@
 ---
-import { getCountries, getCountryCallingCode } from "libphonenumber-js/max";
-
-const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
-const countries = getCountries()
-  .map((code) => ({ code, name: regionNames.of(code) ?? code, dial: getCountryCallingCode(code) }))
-  .sort((a, b) => a.name.localeCompare(b.name));
-
-const formspreeId = import.meta.env.PUBLIC_FORMSPREE_ID?.trim();
 const inquiryEmail =
   import.meta.env.PUBLIC_INQUIRY_EMAIL?.trim() || "info@prophetjerome.com";
-const formAction = formspreeId
-  ? `https://formspree.io/f/${formspreeId}`
-  : `mailto:${inquiryEmail}`;
-const usesMailto = !formspreeId;
+const phoneDisplay = "+94 11 777 4877";
+const phoneLink = "tel:+94117774877";
 ---
 
 <section class="contact section" id="contact">
@@ -21,88 +11,39 @@ const usesMailto = !formspreeId;
       <p class="eyebrow">Contact</p>
       <h2 class="section-title">Be part of the vision</h2>
       <p class="section-lede">
-        Share your inquiry and our team will respond by email. Visit the Miracle
-        Dome on Katunayake–Veyangoda Road, Katunayake, Sri Lanka — or reach
+        Write to us or give us a call and our team will be glad to help. Visit the
+        Miracle Dome on Katunayake–Veyangoda Road, Katunayake, Sri Lanka — or reach
         Prophet Jerome Fernando Ministries directly.
       </p>
-      <ul class="contact__details">
-        <li>
-          <span>Email</span>
-          <a href={`mailto:${inquiryEmail}`}>{inquiryEmail}</a>
-        </li>
-        <li>
-          <span>Phone</span>
-          <a href="tel:+94117774877">+94 11 777 4877</a>
-        </li>
-        <li>
-          <span>Location</span>
-          <p>Miracle Dome, Katunayake–Veyangoda Road, Katunayake, Sri Lanka</p>
-        </li>
-      </ul>
+      <div class="contact__location">
+        <span>Location</span>
+        <p>Miracle Dome, Katunayake–Veyangoda Road, Katunayake, Sri Lanka</p>
+      </div>
     </div>
 
-    <form
-      class="contact__form reveal"
-      action={formAction}
-      method={usesMailto ? "GET" : "POST"}
-      enctype={usesMailto ? "text/plain" : undefined}
-      data-contact-form
-      data-mailto={usesMailto ? "true" : undefined}
-      data-inquiry-email={inquiryEmail}
-    >
-      {
-        !usesMailto && (
-          <>
-            <input type="hidden" name="_subject" value="Miracle Dome City Inquiry" />
-            <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" class="contact__honeypot" aria-hidden="true" />
-          </>
-        )
-      }
-      <label>
-        <span>Name</span>
-        <input type="text" name="name" required autocomplete="name" data-field="name" />
-      </label>
-      <label>
-        <span>Email</span>
-        <input type="email" name="email" required autocomplete="email" data-field="email" />
-      </label>
-      <div class="contact__phone">
-        <label for="contact-phone">
-          <span>Phone</span>
-        </label>
-        <div class="contact__phone-row">
-          <select aria-label="Country code" autocomplete="country" data-field="country">
-            {
-              countries.map((c) => (
-                <option value={c.code} data-dial={c.dial} selected={c.code === "LK"}>
-                  {c.name} (+{c.dial})
-                </option>
-              ))
-            }
-          </select>
-          <input
-            id="contact-phone"
-            type="tel"
-            required
-            inputmode="tel"
-            autocomplete="tel-national"
-            maxlength="20"
-            aria-describedby="contact-phone-error"
-            data-field="phone"
-          />
-        </div>
-        <input type="hidden" name="phone" data-field="phone-full" />
-        <p class="contact__field-error" id="contact-phone-error" data-phone-error hidden></p>
-      </div>
-      <label>
-        <span>Message</span>
-        <textarea name="message" rows="5" required data-field="message"></textarea>
-      </label>
-      <button class="btn btn--solid" type="submit" data-submit>
-        Send inquiry
-      </button>
-      <p class="contact__status" data-status hidden></p>
-    </form>
+    <div class="contact__cards reveal">
+      <a class="contact__card" href={`mailto:${inquiryEmail}`}>
+        <span class="contact__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1.5"></rect><path d="m3.5 6 8.5 7 8.5-7"></path></svg>
+        </span>
+        <span class="contact__text">
+          <span class="contact__label">Email</span>
+          <span class="contact__value">{inquiryEmail}</span>
+          <span class="contact__hint">Write to us <span aria-hidden="true">→</span></span>
+        </span>
+      </a>
+
+      <a class="contact__card" href={phoneLink} data-contact-phone>
+        <span class="contact__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z"></path></svg>
+        </span>
+        <span class="contact__text">
+          <span class="contact__label">Phone</span>
+          <span class="contact__value">{phoneDisplay}</span>
+          <span class="contact__hint contact__hint--call">Tap to call <span aria-hidden="true">→</span></span>
+        </span>
+      </a>
+    </div>
   </div>
 </section>
 
@@ -116,139 +57,100 @@ const usesMailto = !formspreeId;
     display: grid;
     grid-template-columns: 0.9fr 1.1fr;
     gap: clamp(2rem, 5vw, 4rem);
-    align-items: start;
+    align-items: center;
   }
 
-  .contact__details {
-    margin: 1.75rem 0 0;
-    padding: 0;
-    list-style: none;
-    display: grid;
-    gap: 1rem;
+  .contact__location {
+    margin-top: 1.75rem;
   }
 
-  .contact__details span {
+  .contact__location span,
+  .contact__label {
     display: block;
-    margin-bottom: 0.25rem;
     color: var(--color-gold);
     font-size: 0.68rem;
     letter-spacing: 0.16em;
     text-transform: uppercase;
   }
 
-  .contact__details a,
-  .contact__details p {
+  .contact__location p {
+    margin: 0.25rem 0 0;
     color: var(--color-muted);
   }
 
-  .contact__details a:hover {
-    color: var(--color-gold-bright);
-  }
-
-  .contact__form {
+  .contact__cards {
     display: grid;
     gap: 1rem;
   }
 
-  .contact__honeypot {
-    position: absolute;
-    left: -9999px;
-    width: 1px;
-    height: 1px;
-    opacity: 0;
+  .contact__card {
+    display: flex;
+    align-items: center;
+    gap: clamp(1rem, 2.5vw, 1.6rem);
+    padding: clamp(1.25rem, 3vw, 2rem);
+    border: 1px solid var(--color-line);
+    background: var(--color-surface);
+    color: var(--color-white);
+    transition:
+      border-color 0.3s var(--ease-out),
+      transform 0.3s var(--ease-out);
   }
 
-  label {
+  a.contact__card:hover,
+  a.contact__card:focus-visible {
+    border-color: var(--color-gold);
+    transform: translateY(-2px);
+    outline: none;
+  }
+
+  .contact__icon {
+    flex: none;
     display: grid;
-    gap: 0.45rem;
+    place-items: center;
+    width: 3.25rem;
+    height: 3.25rem;
+    border: 1px solid var(--color-line);
+    border-radius: 50%;
+    color: var(--color-gold);
   }
 
-  label span {
+  .contact__icon svg {
+    width: 1.35rem;
+    height: 1.35rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+
+  .contact__text {
+    display: grid;
+    gap: 0.3rem;
+    min-width: 0;
+  }
+
+  .contact__value {
+    font-size: clamp(1.05rem, 2vw, 1.35rem);
+    overflow-wrap: anywhere;
+  }
+
+  .contact__hint {
     color: var(--color-stone);
     font-size: 0.72rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
+    transition: color 0.3s var(--ease-out);
   }
 
-  .contact__phone {
-    display: grid;
-    gap: 0.45rem;
+  a.contact__card:hover .contact__hint,
+  a.contact__card:focus-visible .contact__hint {
+    color: var(--color-gold);
   }
 
-  .contact__phone-row {
-    display: grid;
-    grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
-    gap: 0.5rem;
-  }
-
-  select {
-    width: 100%;
-    padding: 0.9rem 2.2rem 0.9rem 1rem;
-    border: 1px solid var(--color-line);
-    border-radius: 0;
-    background:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23c9a45c' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 1rem center,
-      var(--color-surface);
-    color: var(--color-white);
-    font: inherit;
-    outline: none;
-    appearance: none;
-    text-overflow: ellipsis;
-    transition: border-color 0.25s var(--ease-out);
-  }
-
-  select option {
-    background: var(--color-surface);
-    color: var(--color-white);
-  }
-
-  select:focus {
-    border-color: var(--color-gold);
-  }
-
-  input.is-invalid {
-    border-color: var(--color-error);
-  }
-
-  .contact__field-error {
-    margin: 0;
-    color: var(--color-error);
-    font-size: 0.8rem;
-  }
-
-  @media (max-width: 480px) {
-    .contact__phone-row {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  input,
-  textarea {
-    width: 100%;
-    padding: 0.9rem 1rem;
-    border: 1px solid var(--color-line);
-    background: var(--color-surface);
-    color: var(--color-white);
-    outline: none;
-    transition: border-color 0.25s var(--ease-out);
-  }
-
-  input:focus,
-  textarea:focus {
-    border-color: var(--color-gold);
-  }
-
-  .contact__status {
-    margin: 0;
-    font-size: 0.9rem;
-  }
-
-  .contact__status.is-success {
-    color: var(--color-gold-bright);
-  }
-
-  .contact__status.is-error {
-    color: var(--color-error);
+  /* Computers (mouse pointer): the phone number is shown, not dialled. */
+  .contact__card.is-static .contact__hint--call {
+    display: none;
   }
 
   @media (max-width: 860px) {
@@ -259,168 +161,19 @@ const usesMailto = !formspreeId;
 </style>
 
 <script>
-  import { getExampleNumber, parsePhoneNumberFromString, type CountryCode } from "libphonenumber-js/max";
-  import examples from "libphonenumber-js/mobile/examples";
+  // On computers a "tel:" link has nothing to dial with, so the number is just shown there.
+  // Phones and tablets keep it as a tap-to-call link.
+  const phone = document.querySelector<HTMLAnchorElement>("[data-contact-phone]");
+  const desktop = window.matchMedia("(hover: hover) and (pointer: fine)");
+  const tel = phone?.getAttribute("href") ?? "";
 
-  const form = document.querySelector<HTMLFormElement>("[data-contact-form]");
-  const status = form?.querySelector<HTMLElement>("[data-status]");
-  const submitBtn = form?.querySelector<HTMLButtonElement>("[data-submit]");
-  const inquiryEmail = form?.dataset.inquiryEmail ?? "";
-  const usesMailto = form?.dataset.mailto === "true";
-  const formAction = form?.action ?? "";
-
-  // Phone: the number is checked against the selected country's real numbering rules
-  // (length and leading digits), and sent as one international number, e.g. +94 77 123 4567.
-  const countrySelect = form?.querySelector<HTMLSelectElement>("[data-field='country']");
-  const phoneInput = form?.querySelector<HTMLInputElement>("[data-field='phone']");
-  const phoneFull = form?.querySelector<HTMLInputElement>("[data-field='phone-full']");
-  const phoneError = form?.querySelector<HTMLElement>("[data-phone-error]");
-
-  const country = () => (countrySelect?.value ?? "LK") as CountryCode;
-  const countryName = () =>
-    countrySelect?.selectedOptions[0]?.textContent?.replace(/\s*\(\+\d+\)\s*$/, "").trim() ?? "";
-  const example = () => getExampleNumber(country(), examples)?.formatNational() ?? "";
-
-  const updatePlaceholder = () => {
-    if (phoneInput) phoneInput.placeholder = example();
+  const sync = () => {
+    if (!phone) return;
+    phone.classList.toggle("is-static", desktop.matches);
+    if (desktop.matches) phone.removeAttribute("href");
+    else phone.setAttribute("href", tel);
   };
 
-  /** Returns the error message, or "" when the number is valid. */
-  const checkPhone = () => {
-    if (!phoneInput || !phoneFull) return "";
-    const raw = phoneInput.value.trim();
-    phoneFull.value = "";
-    if (!raw) return "Please enter your phone number.";
-
-    // Someone may type the full international number (+44 …); follow it to that country.
-    const parsed = raw.startsWith("+")
-      ? parsePhoneNumberFromString(raw)
-      : parsePhoneNumberFromString(raw, country());
-    if (parsed?.country && raw.startsWith("+") && countrySelect && parsed.country !== country()) {
-      countrySelect.value = parsed.country;
-      updatePlaceholder();
-    }
-    if (!parsed?.isValid() || (parsed.country && parsed.country !== country())) {
-      const hint = example();
-      return `Please enter a valid ${countryName()} phone number${hint ? `, e.g. ${hint}` : ""}.`;
-    }
-    phoneFull.value = parsed.formatInternational();
-    return "";
-  };
-
-  const showPhoneError = (message: string) => {
-    if (!phoneInput || !phoneError) return;
-    phoneError.hidden = !message;
-    phoneError.textContent = message;
-    phoneInput.classList.toggle("is-invalid", Boolean(message));
-    phoneInput.setAttribute("aria-invalid", message ? "true" : "false");
-  };
-
-  // Keep the browser's own validity in sync so an invalid number blocks sending.
-  const syncValidity = () => {
-    const message = checkPhone();
-    phoneInput?.setCustomValidity(message === "Please enter your phone number." ? "" : message);
-    if (phoneError && !phoneError.hidden) showPhoneError(message);
-    return message;
-  };
-
-  updatePlaceholder();
-
-  phoneInput?.addEventListener("input", () => {
-    const cleaned = phoneInput.value.replace(/[^\d+()\-\s]/g, "");
-    if (cleaned !== phoneInput.value) phoneInput.value = cleaned;
-    syncValidity();
-  });
-
-  phoneInput?.addEventListener("blur", () => {
-    const message = syncValidity();
-    if (!phoneInput.value.trim()) return showPhoneError("");
-    showPhoneError(message);
-    // Tidy a valid number into the country's usual format.
-    if (!message) {
-      const parsed = parsePhoneNumberFromString(phoneInput.value, country());
-      if (parsed) phoneInput.value = parsed.formatNational();
-    }
-  });
-
-  phoneInput?.addEventListener("invalid", () => showPhoneError(checkPhone()));
-
-  countrySelect?.addEventListener("change", () => {
-    updatePlaceholder();
-    if (phoneInput?.value.trim()) showPhoneError(syncValidity());
-  });
-
-  form?.addEventListener("reset", () => {
-    setTimeout(() => {
-      updatePlaceholder();
-      showPhoneError("");
-      phoneInput?.setCustomValidity("");
-    });
-  });
-
-  const setStatus = (message: string, type: string) => {
-    if (!status) return;
-    status.hidden = !message;
-    status.textContent = message;
-    status.classList.toggle("is-success", type === "success");
-    status.classList.toggle("is-error", type === "error");
-  };
-
-  const fieldValue = (field: string) =>
-    form?.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-field='${field}']`)?.value.trim() ?? "";
-
-  form?.addEventListener("submit", async (event) => {
-    const phoneMessage = checkPhone();
-    if (phoneMessage) {
-      event.preventDefault();
-      showPhoneError(phoneMessage);
-      phoneInput?.focus();
-      return;
-    }
-
-    if (usesMailto) {
-      event.preventDefault();
-      const name = fieldValue("name");
-      const email = fieldValue("email");
-      const phone = fieldValue("phone-full");
-      const message = fieldValue("message");
-      const subject = encodeURIComponent(`Miracle Dome City Inquiry — ${name}`);
-      const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\nPhone: ${phone}\n\n${message}`);
-      window.location.href = `mailto:${inquiryEmail}?subject=${subject}&body=${body}`;
-      return;
-    }
-
-    event.preventDefault();
-    setStatus("", "");
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.textContent = "Sending…";
-    }
-
-    try {
-      const response = await fetch(formAction, {
-        method: "POST",
-        body: new FormData(event.currentTarget as HTMLFormElement),
-        headers: { Accept: "application/json" },
-      });
-
-      if (response.ok) {
-        form?.reset();
-        setStatus("Thank you. Your inquiry was sent successfully.", "success");
-      } else {
-        const data = await response.json().catch(() => null);
-        const errorMessage =
-          data?.errors?.map((e: { message: string }) => e.message).join(", ") ||
-          "Something went wrong. Please try again.";
-        setStatus(errorMessage, "error");
-      }
-    } catch {
-      setStatus("Network error. Please check your connection and try again.", "error");
-    } finally {
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Send inquiry";
-      }
-    }
-  });
+  sync();
+  desktop.addEventListener("change", sync);
 </script>
